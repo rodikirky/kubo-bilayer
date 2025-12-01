@@ -1,0 +1,7 @@
+.kubovenv/
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+.env
+*.log
