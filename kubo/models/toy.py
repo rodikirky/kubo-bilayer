@@ -1,68 +1,74 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
+
 import numpy as np
+from numpy.typing import NDArray
+
+ArrayC = NDArray[np.complex128]
 
 
 @dataclass
 class ToyBulkParams:
-    """Parameters for a simple 2x2 toy bulk model."""
+    """Parameters for a very simple 2×2 toy bulk model."""
     mass: float = 1.0
-    gap: float = 1.0
-    v: float = 1.0  # velocity scale for kx, ky
+    gap: float = 1.0  # Δ
 
 
 @dataclass
 class ToyInterfaceParams:
-    """Parameters for a simple 2x2 toy interface Hamiltonian."""
-    strength: float = 0.0  # interface onsite shift / coupling
+    """Parameters for a trivial 2×2 interface Hamiltonian."""
+    strength: float = 0.0  # scalar shift on the interface
 
 
-def toy_bulk_hamiltonian(
-    kx: float,
-    ky: float,
-    kz: float,
-    params: ToyBulkParams | None = None,
-) -> np.ndarray:
+@dataclass
+class ToyBulk:
     """
-    Simple 2x2 Dirac-like toy Hamiltonian:
+    Very simple 2×2 bulk model:
 
-        H = (k^2 / 2m) I + d · sigma_Pauli ,
+        H(k) = (k^2 / 2m) I + Δ σ_z,
 
-    with d = (v kx, v ky, gap).
+    with σ_z = diag(1, -1).
     """
-    if params is None:
-        params = ToyBulkParams()
+    mass: float
+    gap: float
 
-    k2 = kx * kx + ky * ky + kz * kz
-    ek = k2 / (2.0 * params.mass)
+    @classmethod
+    def from_params(cls, params: ToyBulkParams) -> "ToyBulk":
+        return cls(mass=params.mass, gap=params.gap)
 
-    d_x = params.v * kx
-    d_y = params.v * ky
-    d_z = params.gap
+    @property
+    def identity(self) -> ArrayC:
+        return np.eye(2, dtype=np.complex128)
 
-    # Pauli-like structure in 2×2
-    h = np.empty((2, 2), dtype=complex)
-    h[0, 0] = ek + d_z
-    h[1, 1] = ek - d_z
-    h[0, 1] = d_x - 1j * d_y
-    h[1, 0] = d_x + 1j * d_y
-    return h
+    @property
+    def sigma_z(self) -> ArrayC:
+        return np.array([[1.0, 0.0], [0.0, -1.0]], dtype=np.complex128)
+
+    def hamiltonian(self, k: Sequence[float]) -> ArrayC:
+        """
+        H(k) = (k^2 / 2m) I + Δ σ_z  for k = (kx, ky, kz).
+        """
+        kx, ky, kz = map(float, k)
+        k2 = kx * kx + ky * ky + kz * kz
+        ek = k2 / (2.0 * self.mass)
+        return ek * self.identity + self.gap * self.sigma_z
 
 
-def toy_interface_hamiltonian(
-    kx: float,
-    ky: float,
-    params: ToyInterfaceParams | None = None,
-) -> np.ndarray:
+@dataclass
+class ToyInterface:
     """
-    Very simple 2x2 interface Hamiltonian.
+    Trivial 2×2 interface Hamiltonian:
 
-    For now just an onsite term proportional to the identity; extend later
-    if you want Rashba-like or texture terms at the interface.
+        H_int = strength * I.
     """
-    if params is None:
-        params = ToyInterfaceParams()
+    strength: float
 
-    h_int = params.strength * np.eye(2, dtype=complex)
-    return h_int
+    @classmethod
+    def from_params(cls, params: ToyInterfaceParams) -> "ToyInterface":
+        return cls(strength=params.strength)
+
+    def hamiltonian(self, kx: float, ky: float) -> ArrayC:
+        _ = float(kx), float(ky)  # unused, kept for API compatibility
+        return self.strength * np.eye(2, dtype=np.complex128)
