@@ -78,7 +78,7 @@ def construct_glued_greens_function(
     """
     Construct the fully glued interfacial retarded Green's function G(z, z').
 
-    This is the numerical analogue of your symbolic `full_interfacial_greens_function`:
+    This is the numerical analogue of the full interfacial Green's function::
 
         G(z,z') = G_L_bar(z,z') + G_R_bar(z,z')
                   + F(z) @ G00 @ F_bar(z')
@@ -86,8 +86,8 @@ def construct_glued_greens_function(
     with:
         - F(z)      = θ(-z) F_L(z) + θ(+z) F_R(z)
         - F_bar(z') = θ(-z') F_bar_L(z') + θ(+z') F_bar_R(z')
-        - G00       = [ -H_int + L_R - L_L ]^(-1)
-        - L_side    = F_side'(0_side) / (2 m_side)
+        - G00       = [ -H_int + L_R - L_L ]^(-1) # log-derivative matrices
+        - L_side    = F_side'(0_side) / (2 m_side) # inner log-derivative approaching zero from the side
 
     Assumptions
     -----------
@@ -100,7 +100,7 @@ def construct_glued_greens_function(
 
     Returns
     -------
-    G_full : callable
+    G_full : Callable
         A function G_full(z, z') -> (n, n) complex ndarray giving the glued
         interfacial retarded Green's function for the fixed (k_parallel, omega)
         encoded in G_L, G_R and H_int.
@@ -162,5 +162,5 @@ def construct_glued_greens_function(
             F_bar_zp = 0.5 * (F_bar_L(-dz) + F_bar_R(+dz))
 
         return G_L_bar + G_R_bar + F_z @ G00 @ F_bar_zp
-
-    return G_full
+    # at z=zp=0, this should return G00. Must check this later.
+    return G_full # Callable function G(z, z') -> (n, n) complex ndarray
