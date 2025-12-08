@@ -10,7 +10,7 @@ from .config import PhysicsConfig
 BulkHamiltonian = Callable[[float, float, float], np.ndarray] # Type alias: any callable that takes (kx, ky, kz) and returns a matrix
 
 
-def bulk_greens_retarded_matrix(
+def kspace_greens_retarded_matrix(
     omega: float,
     h_k: np.ndarray,
     eta: float,
@@ -23,7 +23,7 @@ def bulk_greens_retarded_matrix(
     return np.linalg.inv(mat)
 
 
-def bulk_greens_retarded(
+def kspace_greens_retarded(
     omega: float,
     kx: float,
     ky: float,
@@ -37,4 +37,6 @@ def bulk_greens_retarded(
     This is model-agnostic: H can be toy, orbitronic, etc.
     """
     h_k = H(kx, ky, kz)
-    return bulk_greens_retarded_matrix(omega, h_k, physics.eta)
+    return kspace_greens_retarded_matrix(omega, h_k, physics.eta)
+
+# Real space computation to follow here
