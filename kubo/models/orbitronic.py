@@ -20,13 +20,13 @@ def _as_real3(vec: Sequence[float]) -> NDArray[np.float64]:
     return arr
 
 
-def _check_unitary(U: ArrayC, tol: float = 1e-10) -> None:
+def _check_unitary(matrix: ArrayC, tol: float = 1e-10) -> None:
     """Raise ValueError if U is not unitary within tolerance."""
-    U = np.asarray(U, dtype=np.complex128)
-    if U.shape != (3, 3):
-        raise ValueError(f"Basis matrix must be (3,3). Got {U.shape}.")
+    matrix = np.asarray(matrix, dtype=np.complex128)
+    if matrix.shape != (3, 3):
+        raise ValueError(f"Basis matrix must be (3,3). Got {matrix.shape}.")
     I = np.eye(3, dtype=np.complex128)
-    UU = U.conj().T @ U
+    UU = matrix.conj().T @ matrix
     if not np.allclose(UU, I, atol=tol):
         raise ValueError("Basis matrix is not unitary within tolerance.")
 
@@ -141,7 +141,7 @@ class OrbitronicBulk:
         k_vec = _as_real3(k).astype(float)
         k2 = float(np.dot(k_vec, k_vec))
         kinetic = (k2 / (2.0 * self.mass)) * self.identity
-        V = self.potential(k_vec)
+        V = self.potential(k)
         return kinetic + V
     
     def velocity_components(self, k: Sequence[float], hbar: float = 1.0
@@ -151,9 +151,9 @@ class OrbitronicBulk:
 
             v_i(k) = (1/ħ) ∂H/∂k_i.
 
-        For H(k) = k^2/(2m) I + γ (k·L)^2 + J (M·L),
+        For H(k) = k^2/(2m) I + gamma (k·L)^2 + J (M·L),
 
-            ∂H/∂k_j = (k_j / m) I + γ (L_j (k·L) + (k·L) L_j).
+            ∂H/∂k_j = (k_j / m) I + gamma (L_j (k·L) + (k·L) L_j).
         """
         k_vec = _as_real3(k).astype(float)
         kx, ky, kz = k_vec
@@ -284,7 +284,7 @@ class OrbitronicInterface:
         ky = float(ky)
         k_par_sq = kx * kx + ky * ky
 
-        Lx, Ly, Lz = self.L
+        _, _, Lz = self.L
         Lz2 = Lz @ Lz
 
         kinetic = k_par_sq / (2.0 * self.m_int) * np.eye(3, dtype=np.complex128)

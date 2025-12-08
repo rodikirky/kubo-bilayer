@@ -1,7 +1,8 @@
-.kubovenv/
 __pycache__/
 *.pyc
 .vscode/
 .idea/
 .env
 *.log
+.kubobilayervenv/
+kubo_bilayer.egg-info/
