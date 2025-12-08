@@ -11,29 +11,36 @@ ArrayC = NDArray[np.complex128]
 
 @dataclass
 class ToyBulkParams:
-    """Parameters for a very simple 2×2 toy bulk model."""
+    """Parameters for a very simple 2x2 toy bulk model."""
     mass: float = 1.0
     gap: float = 1.0  # Δ
 
 
 @dataclass
 class ToyInterfaceParams:
-    """Parameters for a trivial 2×2 interface Hamiltonian."""
+    """Parameters for a trivial 2x2 interface Hamiltonian."""
     strength: float = 0.0  # scalar shift on the interface
 
 
 @dataclass
 class ToyBulk:
     """
-    Very simple 2×2 bulk model:
+    Very simple 2x2 bulk model:
 
-        H(k) = (k^2 / 2m) I + Δ σ_z,
+        H(k) = (k^2 / 2m) I + Δ sigma_z,
 
-    with σ_z = diag(1, -1).
+    with sigma_z = diag(1, -1).
     """
     mass: float
     gap: float
 
+    def __post_init__(self):
+        EPS_MASS = 1e-12
+        if abs(self.mass) < EPS_MASS:
+            raise ValueError(
+                f"mass is too small (|mass| < {EPS_MASS}); got mass={self.mass}"
+            )
+        
     @classmethod
     def from_params(cls, params: ToyBulkParams) -> "ToyBulk":
         return cls(mass=params.mass, gap=params.gap)
@@ -48,7 +55,7 @@ class ToyBulk:
 
     def hamiltonian(self, k: Sequence[float]) -> ArrayC:
         """
-        H(k) = (k^2 / 2m) I + Δ σ_z  for k = (kx, ky, kz).
+        H(k) = (k^2 / 2m) I + Δ sigma_z  for k = (kx, ky, kz).
         """
         kx, ky, kz = map(float, k)
         k2 = kx * kx + ky * ky + kz * kz

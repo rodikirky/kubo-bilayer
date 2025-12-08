@@ -7,8 +7,7 @@ import numpy as np
 from .config import PhysicsConfig
 
 
-# Type alias: any callable that takes (kx, ky, kz) and returns a matrix
-BulkHamiltonian = Callable[[float, float, float], np.ndarray]
+BulkHamiltonian = Callable[[float, float, float], np.ndarray] # Type alias: any callable that takes (kx, ky, kz) and returns a matrix
 
 
 def bulk_greens_retarded_matrix(
