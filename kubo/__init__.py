@@ -6,10 +6,10 @@ kubo: Numerical Kubo observable computation.
 Main modules:
 - config: configs and dataclasses
 - grids: k, z, omega grids
-- greens: Green's-function kernels
+- greens: Green's-function kernels and FFT to real space
 - gluing: interface / bilayer gluing
-- functional_trace: assembling traces
-- streda: σ_I^A / σ_II^A etc.
+- functional_trace: assembling trace and integrals over k_parallel and z
+- streda: break down in sigma_I^A and sigma_II^A etc.
 - integrate: numerical integration helpers
 - io: saving / loading results
 - logging_utils: logging helpers
