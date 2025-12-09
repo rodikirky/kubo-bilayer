@@ -196,6 +196,11 @@ class OrbitronicBulk:
         hbar : float, optional
             Planck constant; use 1.0 for natural units.
         """
+        if L_comp not in ("x", "y", "z"):
+            raise ValueError(f"L_comp must be 'x', 'y', or 'z'. Got {L_comp}.")
+        if flow_dir not in ("x", "y", "z"):
+            raise ValueError(f"flow_dir must be 'x', 'y', or 'z'. Got {flow_dir}.")
+        
         v_x, v_y, v_z = self.velocity_components(k, hbar=hbar)
         Lx, Ly, Lz = self.L
 
