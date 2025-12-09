@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple, Sequence, Optional, Literal
+from typing import Tuple, Sequence, Optional, Literal, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -14,7 +14,7 @@ ArrayC = NDArray[np.complex128]
 # ----------------------------------------------------------------------
 
 
-def _as_real3(vec: Sequence[float]) -> NDArray[np.float64]:
+def _as_real3(vec: Union[Sequence[float],NDArray[np.float64]]) -> NDArray[np.float64]:
     """Convert input to a real 3-vector of shape (3,)."""
     arr = np.asarray(vec, dtype=float).reshape(3)
     return arr
@@ -100,21 +100,23 @@ class OrbitronicBulk:
         mass: float,
         gamma: float,
         J: float,
-        magnetisation: Sequence[float], # method transforms to NDArray
+        magnetisation: Union[Sequence[float],NDArray[np.float64]], # method transforms to NDArray
         basis: Optional[ArrayC] = None,
     ) -> "OrbitronicBulk":
         """Generates OrbitronicBulk from parameters using the canonical L matrices."""
         if mass <= 0:
             raise ValueError("mass must be positive.")
-        M = _as_real3(magnetisation)
+        if type(magnetisation) is not NDArray[np.float64]:
+            magnetisation = list(magnetisation)
+            M = _as_real3(magnetisation)
         L = canonical_L_matrices(basis)
-        return cls(mass=mass, gamma=gamma, J=J, magnetisation=M, L=L)
+        return cls(mass=mass, gamma=gamma, J=J, magnetisation=M, L=L) # type: ignore
 
     @property
     def identity(self) -> ArrayC:
         return np.eye(3, dtype=np.complex128)
 
-    def potential(self, k: Sequence[float]) -> ArrayC:
+    def potential(self, k: Union[Sequence[float],NDArray[np.float64]]) -> ArrayC:
         """
         Orbitronic potential:
 
@@ -132,7 +134,7 @@ class OrbitronicBulk:
         exchange_term = self.J * ML
         return orbital_term + exchange_term
 
-    def hamiltonian(self, k: Sequence[float]) -> ArrayC:
+    def hamiltonian(self, k: Union[Sequence[float],NDArray[np.float64]]) -> ArrayC:
         """
         Full bulk (single-particle) Hamiltonian at momentum k = (kx, ky, kz):
 
@@ -144,7 +146,7 @@ class OrbitronicBulk:
         V = self.potential(k)
         return kinetic + V
     
-    def velocity_components(self, k: Sequence[float], hbar: float = 1.0
+    def velocity_components(self, k: Union[Sequence[float],NDArray[np.float64]], hbar: float = 1.0
                             ) -> tuple[ArrayC, ArrayC, ArrayC]:
         """
         Return (v_x, v_y, v_z) at momentum k, where
