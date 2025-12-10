@@ -259,5 +259,169 @@ def test_orbitronic_interface_from_params_shapes():
     for L in interface.L:
         assert L.shape == (3, 3)
 
+def test_orbitronic_interface_hamiltonian_is_hermitian():
+    interface = OrbitronicInterface.from_params(
+        m_int=1.0,
+        gamma_int=0.7,
+        alpha=0.2,
+        beta=0.1,
+        delta_CF=0.6,
+        L0=1.5,
+    )
+    H_int = interface.hamiltonian(0.2, -0.3)
+
+    assert H_int.shape == (3, 3)
+    assert np.allclose(H_int.conj().T, H_int)
+
+
+def test_orbitronic_interface_hamiltonian_special_case_gamma_alpha_beta_zero():
+    m_int = 1.4
+    delta_CF = 0.9
+    L0 = 1.7
+
+    interface = OrbitronicInterface.from_params(
+        m_int=m_int,
+        gamma_int=0.0,
+        alpha=0.0,
+        beta=0.0,
+        delta_CF=delta_CF,
+        L0=L0,
+    )
+
+    kx, ky = 0.3, -0.4
+    k_par_sq = kx * kx + ky * ky
+
+    _, _, Lz = interface.L
+    I = np.eye(3, dtype=np.complex128)
+    Lz2 = Lz @ Lz
+
+    expected = L0 * (
+        (k_par_sq / (2.0 * m_int)) * I
+        + delta_CF * (I - Lz2)
+    )
+
+    H_int = interface.hamiltonian(kx, ky)
+
+    assert np.allclose(H_int, expected)
+
+
+def test_orbitronic_interface_hamiltonian_at_k_zero():
+    m_int = 1.1
+    gamma_int = 0.2
+    alpha = 0.3
+    beta = 0.4
+    delta_CF = 0.5
+    L0 = 1.0
+
+    interface = OrbitronicInterface.from_params(
+        m_int=m_int,
+        gamma_int=gamma_int,
+        alpha=alpha,
+        beta=beta,
+        delta_CF=delta_CF,
+        L0=L0,
+    )
+
+    H0 = interface.hamiltonian(0.0, 0.0)
+
+    _, _, Lz = interface.L
+    I = np.eye(3, dtype=np.complex128)
+    Lz2 = Lz @ Lz
+    expected = L0 * delta_CF * (I - Lz2)
+
+    assert np.allclose(H0, expected)
+
 # endregion
-# ----------------------------------------------------------------------
+# ---------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# region test Params
+# ---------------------------------------------------------------------
+def test_orbitronic_bulk_params_stores_values():
+    M = np.array([0.1, 0.2, 0.3])
+    params = OrbitronicBulkParams(
+        mass=1.2,
+        gamma=0.4,
+        J=0.5,
+        magnetisation=M,
+    )
+    assert params.mass == pytest.approx(1.2)
+    assert params.gamma == pytest.approx(0.4)
+    assert params.J == pytest.approx(0.5)
+    assert np.allclose(params.magnetisation, M)
+
+def test_orbitronic_bulk_from_params_roundtrip():
+    M = np.array([0.1, 0.2, 0.3], dtype=float)
+    params = OrbitronicBulkParams(
+        mass=1.2,
+        gamma=0.4,
+        J=0.5,
+        magnetisation=M,
+    )
+
+    # params -> model
+    bulk = OrbitronicBulk.from_params(**vars(params))
+
+    # model -> params again
+    params_rt = OrbitronicBulkParams(
+        mass=bulk.mass,
+        gamma=bulk.gamma,
+        J=bulk.J,
+        magnetisation=bulk.magnetisation,
+    )
+
+    # compare
+    assert params_rt.mass == params.mass
+    assert params_rt.gamma == params.gamma
+    assert params_rt.J == params.J
+    np.testing.assert_allclose(params_rt.magnetisation, params.magnetisation)
+
+def test_orbitronic_interface_params_stores_values():
+    params = OrbitronicInterfaceParams(
+        m_int=1.0,
+        gamma_int=0.2,
+        alpha=0.3,
+        beta=0.4,
+        delta_CF=0.5,
+        L0=1.6,
+    )
+    assert params.m_int == pytest.approx(1.0)
+    assert params.gamma_int == pytest.approx(0.2)
+    assert params.alpha == pytest.approx(0.3)
+    assert params.beta == pytest.approx(0.4)
+    assert params.delta_CF == pytest.approx(0.5)
+    assert params.L0 == pytest.approx(1.6)
+
+def test_orbitronic_interface_from_params_roundtrip():
+    params = OrbitronicInterfaceParams(
+        m_int=1.0,
+        gamma_int=0.2,
+        alpha=0.3,
+        beta=0.4,
+        delta_CF=0.5,
+        L0=1.6,
+    )
+
+    # params -> model
+    interface = OrbitronicInterface.from_params(**vars(params))
+
+    # model -> params again
+    params_rt = OrbitronicInterfaceParams(
+        m_int=interface.m_int,
+        gamma_int=interface.gamma_int,
+        alpha=interface.alpha,
+        beta=interface.beta,
+        delta_CF=interface.delta_CF,
+        L0=interface.L0,
+    )
+
+    # compare (these are just copied scalars, so == is fine)
+    assert params_rt.m_int == params.m_int
+    assert params_rt.gamma_int == params.gamma_int
+    assert params_rt.alpha == params.alpha
+    assert params_rt.beta == params.beta
+    assert params_rt.delta_CF == params.delta_CF
+    assert params_rt.L0 == params.L0
+
+# endregion
+# ---------------------------------------------------------------------

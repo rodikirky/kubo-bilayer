@@ -106,9 +106,7 @@ class OrbitronicBulk:
         """Generates OrbitronicBulk from parameters using the canonical L matrices."""
         if mass <= 0:
             raise ValueError("mass must be positive.")
-        if type(magnetisation) is not NDArray[np.float64]:
-            magnetisation = list(magnetisation)
-            M = _as_real3(magnetisation)
+        M = _as_real3(magnetisation)
         L = canonical_L_matrices(basis)
         return cls(mass=mass, gamma=gamma, J=J, magnetisation=M, L=L) # type: ignore
 
