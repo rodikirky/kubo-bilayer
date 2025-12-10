@@ -56,6 +56,9 @@ class ToyBulk:
     def hamiltonian(self, k: Sequence[float]) -> ArrayC:
         """
         H(k) = (k^2 / 2m) I + Δ sigma_z  for k = (kx, ky, kz).
+        
+        TODO: add a batched version that accepts arrays of k with shape (..., 3)
+        and returns (..., dim, dim) to enable vectorized Green's function evaluation.
         """
         kx, ky, kz = map(float, k)
         k2 = kx * kx + ky * ky + kz * kz

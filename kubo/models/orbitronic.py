@@ -137,6 +137,9 @@ class OrbitronicBulk:
         Full bulk (single-particle) Hamiltonian at momentum k = (kx, ky, kz):
 
             H(k) = (k^2 / 2m) I + V(k).
+        
+        TODO: add a batched version that accepts arrays of k with shape (..., 3) 
+        and returns (..., dim, dim) to enable vectorized Green's function evaluation.
         """
         k_vec = _as_real3(k).astype(float)
         k2 = float(np.dot(k_vec, k_vec))
