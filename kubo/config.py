@@ -9,12 +9,11 @@ ModelName = Literal["toy", "orbitronic", "user_defined"]
 
 @dataclass
 class GridConfig:
-    # To be refined later
-    nk_parallel: int = 256
-    nphi: int = 64
-    nkz: int = 256      # REQUIRED for auxilliary bulk G(kx, ky, kz, ω)
-    nz: int = 256       # real-space z grid after FFT of auxilliary GF
-    nomega: int = 256
+    # we want odd nz, nk_parallel and nomega so that 0 is exactly on the grid
+    nomega: int = 255
+    nz: int = 255          # real-space z grid after FFT of auxilliary GF
+    nk_parallel: int = 255 # in-plane momentum grid
+    nphi: int = 64         # starts at 0, goes to 2pi
     k_max: float = 2.0
     z_max: float = 20.0
     omega_max: float = 5.0
