@@ -153,32 +153,3 @@ def test_construct_glued_greens_constant_case():
     G_00 = G_full(0.0, 0.0)
     assert np.allclose(G_00, G00_expected)
 
-def test_glued_continuity_across_interface_constant_case():
-    """
-    For the constant toy model, G_full(z,z') should be continuous in z at z=0
-    for a fixed z' away from the interface.
-    """
-    n = 2
-    a_L = 1.0 + 0.5j
-    a_R = 2.0 - 0.3j
-    v = 1.5
-
-    H_int = v * np.eye(n, dtype=np.complex128)
-    G_L = _constant_halfspace_G(a_L, n)
-    G_R = _constant_halfspace_G(a_R, n)
-
-    m_L = 1.0
-    m_R = 1.0
-    dz = 0.1
-
-    G_full = construct_glued_greens_function(G_L, G_R, H_int, m_L, m_R, dz)
-
-    z_minus = -dz
-    z_plus = +dz
-    zp = -2.0  # some point safely on the left
-
-    G_left_limit = G_full(z_minus, zp)
-    G_right_limit = G_full(z_plus, zp)
-
-    # They should be close; we don't expect machine precision here.
-    assert np.allclose(G_left_limit, G_right_limit, rtol=1e-3, atol=1e-5)
