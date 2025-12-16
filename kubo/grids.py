@@ -39,8 +39,9 @@ def build_kz_grid_fft(cfg: GridConfig) -> tuple[np.ndarray, np.ndarray]:
     - kz: angular wave numbers from 2π * fftfreq, same length as z
     
     This uses cfg.nz as the FFT size and cfg.z_max to set the box size.
+    Centered FFT real-space grid corresponding to a half-open periodic domain:
     The periodic box has length L = 2*z_max and is interpreted as [-z_max, z_max).
-    We use a cell-centred grid: z contains N equidistant points with spacing
+    The z-grid contains N equidistant points with spacing
     dz = L / N, running from -z_max + dz/2 to z_max - dz/2, so the box edges
     ±z_max are not sampled as grid points but are the periodic cell boundaries.
     """
