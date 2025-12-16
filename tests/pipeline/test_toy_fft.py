@@ -3,7 +3,7 @@ import pytest
 
 from kubo.config import GridConfig, PhysicsConfig
 from kubo.grids import build_delta_z_kz_grids_fft
-from kubo.greens import realspace_greens_retarded
+from kubo.greens import realspace_greens_retarded, kspace_greens_retarded, _fourier_kz_to_z, _build_fft_Gkz_input_for_fixed_omega_kpar
 
 
 def _grid_small_fft() -> GridConfig:
@@ -85,3 +85,37 @@ def test_realspace_greens_retarded_is_even_in_z_for_toy(toy_H_spec):
     # compare G(z) and G(-z)
     G_flip = G_z[::-1, :, :]
     assert np.allclose(G_z, G_flip, rtol=1e-9, atol=1e-9)
+
+def _inverse_fourier_z_to_kz(Gz: np.ndarray, cfg: GridConfig, axis: int = 0) -> np.ndarray:
+    """
+    Exact inverse of kubo.greens._fourier_kz_to_z (current implementation):
+
+      Gz = fftshift( ifft(Gk, axis) * (N/L), axes=axis )
+
+    =>  Gk = fft( ifftshift(Gz, axes=axis) * (L/N), axis=axis )
+    """
+    N = cfg.nz
+    L = 2.0 * cfg.z_max
+    tmp = np.fft.ifftshift(Gz, axes=axis) * (L / N)
+    return np.fft.fft(tmp, axis=axis)
+
+
+def test_fft_roundtrip_kz_to_delta_z_and_back(toy_H_spec):
+    cfg = _grid_small_fft()
+    physics = PhysicsConfig(eta=1e-3)
+
+    delta_z, kz = build_delta_z_kz_grids_fft(cfg)
+
+    omega = 0.6
+    kx, ky = 0.2, -0.1
+
+    # Build sampled G(kz) on the FFT kz grid
+    Gk = _build_fft_Gkz_input_for_fixed_omega_kpar(omega, kx, ky, kz, toy_H_spec, physics)
+
+    # Forward: kz -> delta_z (your code)
+    Gz = _fourier_kz_to_z(Gk, cfg)
+
+    # Inverse: delta_z -> kz (test helper)
+    Gk_rec = _inverse_fourier_z_to_kz(Gz, cfg)
+
+    assert np.allclose(Gk_rec, Gk, rtol=1e-10, atol=1e-10)

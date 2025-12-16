@@ -241,3 +241,9 @@ def test_zp_grid_aligns_with_fft_delta_z_grid():
 
     # pointwise alignment (this is the big one)
     assert np.allclose(zp, delta_z, rtol=0.0, atol=1e-12)
+
+def test_fft_kz_spacing_matches_box_length(cfg):
+    _, kz = build_delta_z_kz_grids_fft(cfg)
+    L = 2.0 * cfg.z_max
+    # spacing between the first two FFT modes is 2π/L
+    assert (kz[1] - kz[0]) == pytest.approx(2.0 * np.pi / L)

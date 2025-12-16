@@ -1,14 +1,14 @@
 import numpy as np
 import pytest
 
-from kubo.config import PhysicsConfig, GridConfig, ModelConfig, KuboConfig
+from kubo.config import PhysicsConfig
 from kubo.greens import (
     kspace_greens_retarded_matrix,
     kspace_greens_retarded,
 )
 
 # --------------------------------------------------------------------------------------
-# Core correctness tests: inversion identity and wrapper consistency
+# region Core correctness
 # --------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize(
@@ -24,9 +24,7 @@ def test_kspace_greens_retarded_matrix_solves_inverse_identity(omega, kx, ky, kz
     Fundamental property:
         [(ω + iη)I - H(k)] G^R(ω,k) = I
     """
-    H = toy_H_spec
-    
-    Hk = H(kx, ky, kz)
+    Hk = toy_H_spec(kx, ky, kz)
     GR = kspace_greens_retarded_matrix(omega=omega, h_k=Hk, eta=eta)
 
     dim = Hk.shape[0]
@@ -34,6 +32,7 @@ def test_kspace_greens_retarded_matrix_solves_inverse_identity(omega, kx, ky, kz
     I = np.eye(dim, dtype=complex)
 
     assert np.allclose(mat @ GR, I, rtol=1e-10, atol=1e-10)
+    assert np.allclose(GR @ mat, I, rtol=1e-10, atol=1e-10)
 
 
 def test_kspace_greens_retarded_wrapper_matches_matrix(toy_H_spec):
@@ -57,8 +56,46 @@ def test_kspace_greens_retarded_wrapper_matches_matrix(toy_H_spec):
     assert np.allclose(GR_wrap, GR_mat, rtol=1e-12, atol=1e-12)
 
 
+def _advanced_matrix(omega: float, h_k: np.ndarray, eta: float) -> np.ndarray:
+    """
+    G^A(ω, k) = [ (ω - iη) I - H(k) ]^{-1}
+    """
+    h_k = np.asarray(h_k, dtype=complex)
+    dim = h_k.shape[0]
+    I = np.eye(dim, dtype=complex)
+    mat = (omega - 1j * eta) * I - h_k
+    return np.linalg.solve(mat, np.eye(dim, dtype=complex))
+
+def test_ga_is_conjugate_transpose_of_gr(toy_bulk_spec):
+    omega = 0.35
+    eta = 1e-3
+    kx, ky, kz = 0.2, -0.1, 0.4
+    Hk = toy_bulk_spec.hamiltonian((kx, ky, kz))
+
+    GR = kspace_greens_retarded_matrix(omega, Hk, eta)
+    GA = _advanced_matrix(omega, Hk, eta)
+
+    assert np.allclose(GA, GR.conj().T, rtol=1e-12, atol=1e-12)
+
+@pytest.mark.parametrize("omega,kx,ky,kz", [
+    (0.3, 0.1, 0.2, 0.3),
+    (1.1, -0.4, 0.0, 0.9),
+    (-0.7, 0.0, -0.6, 0.2),
+])
+def test_kspace_greens_no_nan_inf(toy_H_spec, omega, kx, ky, kz):
+    GR = kspace_greens_retarded(
+        omega=omega, kx=kx, ky=ky, kz=kz,
+        H=toy_H_spec, physics=PhysicsConfig(eta=1e-3)
+    )
+    assert np.isfinite(GR.real).all()
+    assert np.isfinite(GR.imag).all()
+
+
+# endregion
 # --------------------------------------------------------------------------------------
-# Toy-specific structural tests: diagonality + closed form
+
+# --------------------------------------------------------------------------------------
+# region Toy model specific structure
 # --------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize(
@@ -110,9 +147,25 @@ def test_retarded_gf_has_negative_imag_diagonal_for_toy(toy_bulk_spec):
     assert GR[0, 0].imag < 0.0
     assert GR[1, 1].imag < 0.0
 
+def test_toy_greens_even_in_k(toy_bulk_spec):
+    omega = 0.6
+    eta = 1e-3
+    k = (0.2, -0.1, 0.4)
+    km = tuple(-x for x in k)
+
+    Hk  = toy_bulk_spec.hamiltonian(k)
+    Hkm = toy_bulk_spec.hamiltonian(km)
+
+    GR  = kspace_greens_retarded_matrix(omega, Hk, eta)
+    GRm = kspace_greens_retarded_matrix(omega, Hkm, eta)
+
+    assert np.allclose(GR, GRm, rtol=1e-12, atol=1e-12)
+
+# endregion
+# --------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------
-# Input validation tests
+# region Input validation tests
 # --------------------------------------------------------------------------------------
 
 def test_kspace_greens_retarded_matrix_rejects_non_square():
@@ -124,3 +177,6 @@ def test_kspace_greens_retarded_matrix_rejects_non_square():
 
     with pytest.raises(ValueError):
         kspace_greens_retarded_matrix(omega, np.ones((2, 3)), eta)
+
+# endregion
+# --------------------------------------------------------------------------------------
