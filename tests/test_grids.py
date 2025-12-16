@@ -80,19 +80,20 @@ def test_build_zp_grid_basic_properties(cfg: GridConfig):
 
     # z should be monotonic increasing
     dz = np.diff(zp)
+    dz_step = zp[1] - zp[0]
     assert np.all(dz > 0)
     # uniform spacing
-    assert np.allclose(dz, dz[0])
+    assert np.allclose(dz, dz_step)
 
     # Total box length from grid spacing should be 2 * z_max
-    L_from_grid = dz[0] * cfg.nz
+    L_from_grid = dz_step * cfg.nz
     assert L_from_grid == pytest.approx(2.0 * cfg.z_max)
 
     # z should span [-z_max, z_max) with center at 0
-    assert zp[0] == pytest.approx(-cfg.z_max+(dz[0]/2))
+    assert zp[0] == pytest.approx(-cfg.z_max+(dz_step/2))
     # half-open: max < z_max
     assert zp[-1] < cfg.z_max
-    assert zp[-1] == pytest.approx(cfg.z_max-(dz[0]/2))
+    assert zp[-1] == pytest.approx(cfg.z_max-(dz_step/2))
     mid = cfg.nz // 2
     assert zp[mid] == pytest.approx(0.0)
 
@@ -180,19 +181,20 @@ def test_build_kz_grid_fft_basic_properties(cfg: GridConfig):
 
     # z should be monotonic increasing
     dz = np.diff(z)
+    dz_step = z[1] - z[0]
     assert np.all(dz > 0)
     # uniform spacing
-    assert np.allclose(dz, dz[0])
+    assert np.allclose(dz, dz_step)
 
     # Total box length from grid spacing should be 2 * z_max
-    L_from_grid = dz[0] * cfg.nz
+    L_from_grid = dz_step * cfg.nz
     assert L_from_grid == pytest.approx(2.0 * cfg.z_max)
 
     # z should span [-z_max, z_max) with center at 0
-    assert z[0] == pytest.approx(-cfg.z_max+(dz[0]/2)) # cell-centered
+    assert z[0] == pytest.approx(-cfg.z_max+(dz_step/2)) # cell-centered
     # half-open: max < z_max
     assert z[-1] < cfg.z_max
-    assert z[-1] == pytest.approx(cfg.z_max-(dz[0]/2)) # cell-centered
+    assert z[-1] == pytest.approx(cfg.z_max-(dz_step/2)) # cell-centered
     mid = cfg.nz // 2
     assert z[mid] == pytest.approx(0.0)
 
