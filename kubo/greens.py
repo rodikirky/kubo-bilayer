@@ -4,7 +4,7 @@ import numpy as np
 from typing import Callable
 
 from .config import GridConfig, PhysicsConfig
-from .grids import build_kz_grid_fft
+from .grids import build_delta_z_kz_grids_fft
 
 # Type alias: any callable that takes (kx, ky, kz) and returns a matrix
 BulkHamiltonian = Callable[[float, float, float], np.ndarray] 
@@ -157,7 +157,7 @@ def realspace_greens_retarded(
         G^R(ω, kx, ky, z) on the z grid.
     """
     # Build kz grid for FFT
-    z, kz = build_kz_grid_fft(grid)
+    z, kz = build_delta_z_kz_grids_fft(grid)
 
     # Compute G^R(ω, kx, ky, kz) on the kz grid
     G_kz = _build_fft_Gkz_input_for_fixed_omega_kpar(

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from kubo.config import GridConfig, PhysicsConfig
-from kubo.grids import build_kz_grid_fft
+from kubo.grids import build_delta_z_kz_grids_fft
 from kubo.greens import realspace_greens_retarded
 
 
@@ -13,7 +13,7 @@ def _grid_small_fft() -> GridConfig:
 
 def test_build_kz_grid_fft_sanity():
     cfg = _grid_small_fft()
-    z, kz = build_kz_grid_fft(cfg)
+    z, kz = build_delta_z_kz_grids_fft(cfg)
 
     assert z.shape == (cfg.nz,)
     assert kz.shape == (cfg.nz,)

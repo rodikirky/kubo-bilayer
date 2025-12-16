@@ -12,7 +12,7 @@ from kubo.greens import (
     _fourier_kz_to_z,
     realspace_greens_retarded,
 )
-from kubo.grids import build_kz_grid_fft
+from kubo.grids import build_delta_z_kz_grids_fft
 
 # ---------------------------------------------
 # Fixtures
@@ -133,7 +133,7 @@ def test_fourier_kz_to_z_constant_yields_delta_like_peak(grid: GridConfig):
     For G(kz) = 1, the real-space G(z) should be a discrete delta peak
     at z=0 (up to scaling), i.e. one big value and ~0 elsewhere.
     """
-    z, kz = build_kz_grid_fft(grid)
+    z, kz = build_delta_z_kz_grids_fft(grid)
     N = grid.nz
     L = 2.0 * grid.z_max
 

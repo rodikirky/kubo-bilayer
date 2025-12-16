@@ -6,10 +6,11 @@ import numpy as np
 from kubo.config import GridConfig
 from kubo.grids import (
     _require_odd,
+    build_zp_grid,
     build_k_parallel_grid_polar,
     build_k_parallel_grid_cartesian,
     build_omega_grid,
-    build_kz_grid_fft
+    build_delta_z_kz_grids_fft
 )
 # ---------------------------------------------
 # Fixtures
@@ -63,6 +64,44 @@ def test_build_omega_grid_requires_odd_nomega(cfg: GridConfig):
     cfg.nomega = 10  # even
     with pytest.raises(ValueError):
         build_omega_grid(cfg)
+
+# endregion
+# ---------------------------------------------
+
+# ---------------------------------------------
+# region zp grid
+# ---------------------------------------------
+def test_build_zp_grid_basic_properties(cfg: GridConfig):
+    zp = build_zp_grid(cfg)
+
+    # Shape and dtype
+    assert zp.shape == (cfg.nz,)
+    assert zp.dtype == np.float64
+
+    # z should be monotonic increasing
+    dz = np.diff(zp)
+    assert np.all(dz > 0)
+    # uniform spacing
+    assert np.allclose(dz, dz[0])
+
+    # Total box length from grid spacing should be 2 * z_max
+    L_from_grid = dz[0] * cfg.nz
+    assert L_from_grid == pytest.approx(2.0 * cfg.z_max)
+
+    # z should span [-z_max, z_max) with center at 0
+    assert zp[0] == pytest.approx(-cfg.z_max+(dz[0]/2))
+    # half-open: max < z_max
+    assert zp[-1] < cfg.z_max
+    assert zp[-1] == pytest.approx(cfg.z_max-(dz[0]/2))
+    mid = cfg.nz // 2
+    assert zp[mid] == pytest.approx(0.0)
+
+    
+
+def test_build_zp_grid_requires_odd_nz(cfg: GridConfig):
+    cfg.nz = 10  # even
+    with pytest.raises(ValueError):
+        build_zp_grid(cfg)
 
 # endregion
 # ---------------------------------------------
@@ -122,8 +161,6 @@ def test_build_k_parallel_grid_cartesian_basic_properties(cfg: GridConfig):
 def test_build_k_parallel_grid_requires_odd_nk_parallel(cfg: GridConfig):
     cfg.nk_parallel = 10  # even
     with pytest.raises(ValueError):
-        build_k_parallel_grid_polar(cfg)
-    with pytest.raises(ValueError):
         build_k_parallel_grid_cartesian(cfg)
 
 # endregion
@@ -133,7 +170,7 @@ def test_build_k_parallel_grid_requires_odd_nk_parallel(cfg: GridConfig):
 # region FFT grid pair
 # ---------------------------------------------
 def test_build_kz_grid_fft_basic_properties(cfg: GridConfig):
-    z, kz = build_kz_grid_fft(cfg)
+    z, kz = build_delta_z_kz_grids_fft(cfg)
 
     # Shapes and dtypes
     assert z.shape == (cfg.nz,)
@@ -175,4 +212,30 @@ def test_build_kz_grid_fft_basic_properties(cfg: GridConfig):
 def test_build_kz_grid_fft_requires_odd_nz(cfg: GridConfig):
     cfg.nz = 10  # even
     with pytest.raises(ValueError):
-        build_kz_grid_fft(cfg)
+        build_delta_z_kz_grids_fft(cfg)
+
+def _grid_small_fft() -> GridConfig:
+    # mirror what you used in FFT tests
+    return GridConfig(nz=31, z_max=10.0, nk_parallel=7, nomega=7)
+
+def test_zp_grid_aligns_with_fft_delta_z_grid():
+    """
+    Guardrail: the z'-integration grid (zp) should align with the FFT real-space grid
+    used for delta_z = z - z'. This avoids mixing two different discretizations of the
+    same box later in gluing / Kubo traces.
+    """
+    cfg = _grid_small_fft()
+
+    zp = build_zp_grid(cfg)
+    delta_z, _kz = build_delta_z_kz_grids_fft(cfg)
+
+    # same length
+    assert zp.shape == delta_z.shape == (cfg.nz,)
+
+    # same spacing
+    dz_zp = zp[1] - zp[0]
+    dz_dz = delta_z[1] - delta_z[0]
+    assert dz_zp == pytest.approx(dz_dz)
+
+    # pointwise alignment (this is the big one)
+    assert np.allclose(zp, delta_z, rtol=0.0, atol=1e-12)

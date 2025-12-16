@@ -10,14 +10,22 @@ def _require_odd(name: str, n: int) -> None:
         raise ValueError(f"{name} must be odd so that 0 lies on the grid, got {n}.")
 
 # For Fermi-sea integral
+def build_zp_grid(cfg: GridConfig) -> np.ndarray:
+    # not a linspace to match the FFT grid below
+    N = cfg.nz
+    _require_odd("nz", N)
+    L = 2.0 * cfg.z_max
+    dz_step = L / N
+    j = np.arange(N)
+    return (j - N // 2) * dz_step
+
+# For the functional trace
 def build_omega_grid(cfg: GridConfig) -> np.ndarray:
     _require_odd("nomega", cfg.nomega)
     return np.linspace(-cfg.omega_max, cfg.omega_max, cfg.nomega, endpoint=True)
 
-# For the functional trace
 def build_k_parallel_grid_polar(cfg: GridConfig) -> tuple[np.ndarray, np.ndarray]:
     """Return arrays (k_parallel, phi)."""
-    _require_odd("nk_parallel", cfg.nk_parallel)
     k_par = np.linspace(0.0, cfg.k_max, cfg.nk_parallel, endpoint=True)
     phi = np.linspace(0.0, 2.0 * np.pi, cfg.nphi, endpoint=False)
     return k_par, phi
@@ -31,30 +39,30 @@ def build_k_parallel_grid_cartesian(cfg: GridConfig) -> tuple[np.ndarray, np.nda
 
 
 # For the functional trace and FFT along kz <-> z
-def build_kz_grid_fft(cfg: GridConfig) -> tuple[np.ndarray, np.ndarray]:
+def build_delta_z_kz_grids_fft(cfg: GridConfig) -> tuple[np.ndarray, np.ndarray]:
     """
-    FFT-compatible pair (z, kz):
+    FFT-compatible pair (delta_z, kz), where delta_z = z-z':
 
-    - z: real-space grid sampled from [-z_max, z_max) with uniform spacing around 0
+    - delta_z: real-space grid sampled from [-z_max, z_max) with uniform spacing around 0
     - kz: angular wave numbers from 2π * fftfreq, same length as z
     
     This uses cfg.nz as the FFT size and cfg.z_max to set the box size.
     Centered FFT real-space grid corresponding to a half-open periodic domain:
     The periodic box has length L = 2*z_max and is interpreted as [-z_max, z_max).
-    The z-grid contains N equidistant points with spacing
-    dz = L / N, running from -z_max + dz/2 to z_max - dz/2, so the box edges
+    The delta_z-grid contains N equidistant points with spacing
+    dz_step = L / N, running from -z_max + dz_step/2 to z_max - dz_step/2, so the box edges
     ±z_max are not sampled as grid points but are the periodic cell boundaries.
     """
     N = cfg.nz
     _require_odd("nz", N)
     L = 2.0 * cfg.z_max          # total length in z
-    dz = L / N                   # grid spacing
+    dz_step = L / N                   # grid spacing
 
     # z in [-z_max, z_max), centered around 0
     j = np.arange(N)
-    z = (j - N // 2) * dz
+    delta_z = (j - N // 2) * dz_step
 
     # k in angular units, consistent with exp(i * kz * z)
-    kz = 2.0 * np.pi * np.fft.fftfreq(N, d=dz)
+    kz = 2.0 * np.pi * np.fft.fftfreq(N, d=dz_step)
 
-    return z, kz
+    return delta_z, kz
