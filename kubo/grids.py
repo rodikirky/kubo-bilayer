@@ -10,6 +10,7 @@ def _require_odd(name: str, n: int) -> None:
         raise ValueError(f"{name} must be odd so that 0 lies on the grid, got {n}.")
 
 # For Fermi-sea integral
+# TODO: might not need this, z' could be sourced from the FFT grid as a differnet index than z.
 def build_zp_grid(cfg: GridConfig) -> np.ndarray:
     # not a linspace to match the FFT grid below
     N = cfg.nz

@@ -151,13 +151,17 @@ def realspace_greens_retarded(
 
     Returns
     -------
-    z : np.ndarray
+    delta_z : np.ndarray
         Real-space z grid (cell-centered).
     G_z : np.ndarray
         G^R(ω, kx, ky, z) on the z grid.
     """
     # Build kz grid for FFT
-    z, kz = build_delta_z_kz_grids_fft(grid)
+    delta_z, kz = build_delta_z_kz_grids_fft(grid)
+    N = grid.nz
+    assert delta_z.size == N
+    assert kz.size == N 
+    assert delta_z[N//2] == 0.0 
 
     # Compute G^R(ω, kx, ky, kz) on the kz grid
     G_kz = _build_fft_Gkz_input_for_fixed_omega_kpar(
@@ -176,7 +180,12 @@ def realspace_greens_retarded(
         axis=0,
     )
 
-    return z, G_z
+    return delta_z, G_z
+
+# Helper: index of delta_z == 0
+# G(0,0) will be at this index in the returned G_z array
+def delta_z_zero_index(cfg: GridConfig) -> int:
+    return cfg.nz // 2
 
 # endregion
 # ----------------------------------------------
