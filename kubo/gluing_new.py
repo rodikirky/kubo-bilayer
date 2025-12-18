@@ -24,12 +24,17 @@ def precompute_gluing_from_bulk_kernels(
     m_L: float,
     m_R: float,
 ) -> GluingPrecompute:
+    
+    N = delta_z.size
+    mid = N // 2 # zero point
+    dz_step = float(delta_z[1] - delta_z[0])
+    z_abs = [] # source for z and z' values
+    for i in range(mid):
+        z_abs.append(delta_z[(mid // 2) + i])
+    z_abs = np.ndarray(z_abs, dtype=np.complex128)
     # basic checks
-    z_abs = delta_z # source for z and z' values
-    dz_step = float(z_abs[1] - z_abs[0])
-    N = z_abs.size
-    mid = N // 2
-    assert z_abs[mid] == 0.0
+    assert z_abs[mid // 2] == 0.0
+    assert z_abs.size == mid
     assert np.allclose(dz_step, float(z_abs[-1] - z_abs[-2])) # uniform spacing
 
     GL00 = gL_dz[mid]
@@ -102,8 +107,8 @@ def glued_retarded_greens_on_grid(
         Glued retarded Green's function G^R(z,z') on the (z,z') grid, shape (N,N,n,n).
     """
     z = pre.z_abs
-    N = z.size
-    mid = N // 2
+    Nz = z.size
+    midz = Nz // 2
     n = pre.G00.shape[0]
 
     # choose side-specific F arrays per z and z'
@@ -111,37 +116,37 @@ def glued_retarded_greens_on_grid(
     left_mask  = z < 0 
     right_mask = z > 0
 
-    F = np.empty((N, n, n), dtype=np.complex128)
-    Fbar = np.empty((N, n, n), dtype=np.complex128)
+    F = np.empty((Nz, n, n), dtype=np.complex128)
+    Fbar = np.empty((Nz, n, n), dtype=np.complex128)
 
     # effective F and Fbar matrix arrays on full z grid using theta function like masks
     F[left_mask]  = pre.F_L[left_mask]
     F[right_mask] = pre.F_R[right_mask]
     F[~(left_mask | right_mask)] = -np.eye(n, dtype=np.complex128)  # z==0
-    assert np.allclose(F[mid], -np.eye(n, dtype=np.complex128))
+    assert np.allclose(F[midz], -np.eye(n, dtype=np.complex128))
 
     Fbar[left_mask]  = pre.Fbar_L[left_mask]
     Fbar[right_mask] = pre.Fbar_R[right_mask]
     Fbar[~(left_mask | right_mask)] = -np.eye(n, dtype=np.complex128)  # z'==0
-    assert np.allclose(Fbar[mid], -np.eye(n, dtype=np.complex128))
+    assert np.allclose(Fbar[midz], -np.eye(n, dtype=np.complex128))
 
     # core glued term: F(z) G00 Fbar(z')
     # broadcast with new dummy axes + batched matmul:
-    # core is (N,N,n,n) and the first two axes correspond to (z,z')
-    core = (F[:, None, :, :] @ pre.G00[None, None, :, :] @ Fbar[None, :, :, :])  # (N,N,n,n)
+    # core is (Nz,Nz,n,n) and the first two axes correspond to (z,z')
+    core = (F[:, None, :, :] @ pre.G00[None, None, :, :] @ Fbar[None, :, :, :])  # (Nz,Nz,n,n)
 
     # add half-space barred contributions on same side
     # G_bar = G(z,z') - G(z,0) G(0,0)^{-1} G(0,z')
-    # but in bulk: G(z,z') = g(z-z') => use g_dz with index differences
+    # but in bulk: G(z,z') = g(z-z') => use g_dz with index differences i-j
 
     # Build index difference table once:
-    idx = np.arange(N)
-    diff = (idx[:, None] - idx[None, :]) + mid  # map i-j to [0..N-1]
-    # diff is in [-(N-1)/2 .. +(N-1)/2] + mid -> [0..N-1]
+    idx = np.arange(Nz) # [0..Nz-1], shape (Nz,)
+    # Subtracting broadcasts to shape (Nz,Nz):
+    diff_idx = (idx[:, None] - idx[None, :]) + Nz  # values in [-(Nz-1)..+(Nz-1)] + (Nz-1) -> [0..2Nz-2]
 
     # bulk same-side terms:
-    GL = gL_dz[diff]  # (N,N,n,n)
-    GR = gR_dz[diff]
+    GL = gL_dz[diff_idx]  # (Nz,Nz,n,n)
+    GR = gR_dz[diff_idx]  # (Nz,Nz,n,n)
 
     # construct barred:
     # G(z,0)=g(z), G(0,z')=g(-z')
@@ -162,6 +167,6 @@ def glued_retarded_greens_on_grid(
     out[same_right] += GR_bar[same_right]
 
     # ensure (0,0) equals interface G00 if you want that exact identity
-    out[mid, mid] = pre.G00
+    out[midz, midz] = pre.G00
     return out
 
