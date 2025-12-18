@@ -20,6 +20,43 @@ def build_zp_grid(cfg: GridConfig) -> np.ndarray:
     j = np.arange(N)
     return (j - N // 2) * dz_step
 
+def build_kz_grid_diagnostic(
+    cfg: GridConfig,
+    *,
+    nkz: int = 2001,
+    kz_max: float | None = None,
+) -> np.ndarray:
+    """
+    Diagnostic / plotting kz grid (NOT FFT-coupled).
+
+    Use this when you want to inspect G(ω,kx,ky,kz) over a wide kz range
+    to locate on-shell peaks / near-poles independent of the FFT box size.
+
+    Parameters
+    ----------
+    cfg : GridConfig
+        Used only for a sensible default of kz_max if not provided.
+    nkz : int
+        Number of kz samples. Must be odd so kz=0 is included.
+    kz_max : float | None
+        Max |kz| for the scan. If None, defaults to cfg.k_max.
+
+    Returns
+    -------
+    kz : np.ndarray
+        1D array of shape (nkz,) spanning [-kz_max, kz_max] including 0.
+    """
+    _require_odd("nkz", nkz)
+
+    if kz_max is None:
+        kz_max = float(cfg.k_max)
+
+    if kz_max <= 0.0:
+        raise ValueError(f"kz_max must be positive, got {kz_max}.")
+
+    return np.linspace(-kz_max, kz_max, nkz, endpoint=True, dtype=float)
+
+
 # For the functional trace
 def build_omega_grid(cfg: GridConfig) -> np.ndarray:
     _require_odd("nomega", cfg.nomega)

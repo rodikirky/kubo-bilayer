@@ -29,7 +29,7 @@ def profile_amplitude_over_first_axis(arr: np.ndarray, *, mode: str = "fro") -> 
     if mode == "elem00": # (0,0) element absolute value
         return np.abs(arr[:, 0, 0])
 
-    raise ValueError(f"Unknown mode={mode!r}.")
+    raise ValueError(f"Unknown mode={mode!r}. Choose from 'fro', 'max', 'elem00'.")
 
 
 def edge_leak_ratio(profile: np.ndarray, *, m: int = 8, center_index: Optional[int] = None) -> float:
@@ -120,3 +120,7 @@ def plot_complex_components(
     ax.legend()
     fig.tight_layout()
     return fig, ax
+
+def show():
+    plt = _import_plt()
+    plt.show()
