@@ -4,7 +4,6 @@ import argparse
 from dataclasses import asdict
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from kubo.models.toy import ToyBulk, ToyBulkParams
 from kubo.presets import PRESETS
@@ -18,6 +17,7 @@ from kubo.plotting import (
     edge_leak_ratio,
     plot_profile,
     plot_complex_components,
+    show,
 )
 
 
@@ -109,6 +109,9 @@ def main() -> None:
         physics=physics,
     )
     print(f"[run] kz_diag range: [{kz_diag.min():.3f}, {kz_diag.max():.3f}] (nkz={kz_diag.size})")
+    if omega == 0:
+        print(f"[diag] FFT kz coverage check (toy ω=0): |k_on|≈{np.sqrt(2):.3f}, "
+              f"kz_fft_max≈{np.max(np.abs(kz_fft)):.3f}")
 
     # ---- Optional zoom/downsample for component plots ----
     ds = max(1, int(args.downsample))
@@ -158,17 +161,29 @@ def main() -> None:
     )
 
     # (4) Wide kz diagnostic: |G11(kz)| (this should show peaks near ±sqrt(2) for ω=0, Δ=1, m=1)
-    amp_kz_diag_11 = np.abs(G_kz_diag[:, 1, 1])
+    kz_i, kz_j = 1, 1  # toy: lower band channel; change later or make CLI-configurable
+
+    amp_kz_diag = np.abs(G_kz_diag[:, kz_i, kz_j])
     plot_profile(
         kz_diag,
-        amp_kz_diag_11,
-        title="Toy: |G^R_11(kz)| vs kz (wide diagnostic kz grid)",
+        amp_kz_diag,
+        title=f"Toy: |G^R_{kz_i}{kz_j}(kz)| vs kz (wide diagnostic kz grid)",
         xlabel="kz",
-        ylabel="|G_11|",
+        ylabel=f"|G_{kz_i}{kz_j}|",
         logy=True,
     )
 
-    plt.show()
+    amp_kz_fft = np.abs(G_kz_fft[:, kz_i, kz_j])
+    plot_profile(
+        kz_fft,
+        amp_kz_fft,
+        title=f"Toy: |G^R_{kz_i}{kz_j}(kz)| vs kz (potentially narrow FFT kz grid)",
+        xlabel="kz",
+        ylabel=f"|G_{kz_i}{kz_j}|",
+        logy=True,
+    )
+
+    show()
 
 
 if __name__ == "__main__":
