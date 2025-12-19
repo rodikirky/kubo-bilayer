@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray 
 from typing import Callable
+from dataclasses import dataclass
 
+from .plotting import profile_amplitude_over_first_axis, edge_leak_ratio
 from .config import GridConfig, PhysicsConfig
 from .grids import build_delta_z_kz_grids_fft
 
 # Type alias: any callable that takes (kx, ky, kz) and returns a matrix
 BulkHamiltonian = Callable[[float, float, float], np.ndarray] 
+# Type alias: matrix of complex numbers
+ArrayC = NDArray[np.complex128]
 
 # ----------------------------------------------
 # region k-space GF
@@ -287,3 +292,49 @@ def realspace_greens_retarded_with_kz(
 
 # endregion
 # ----------------------------------------------
+
+# ----------------------------------------------
+# region Diagnostics
+# ----------------------------------------------
+@dataclass(frozen=True)
+class KernelDiagnostics:
+    edge_leak_ratio: float
+    center_index: int
+    edge_warn: float = 1e-6
+    edge_error: float = 1e-3
+    edge_action: str = "warn"  # "none"|"warn"|"error"
+    edge_m: int = 10
+
+@dataclass(frozen=True)
+class RealSpaceKernel:
+    delta_z: NDArray[np.float64]   # (N,)
+    kz: NDArray[np.float64]        # (N,) FFT kz grid (optional but nice)
+    G_dz: ArrayC                   # (N, dim, dim)
+    G_kz: ArrayC                   # (N, dim, dim) (optional)
+    diag: KernelDiagnostics
+
+def realspace_kernel_retarded_with_meta(
+        omega: float,
+        kx: float,
+        ky: float,
+        H: BulkHamiltonian,
+        physics: PhysicsConfig,
+        grid: GridConfig,
+        edge_m: int = 10,
+        edge_action: str = "warn"       # "none"|"warn"|"error"
+        ) -> RealSpaceKernel:
+    delta_z, kz, G_z, G_kz = realspace_greens_retarded_with_kz(omega,kx,ky,H,physics,grid)
+
+    N = delta_z.size
+    mid = N // 2
+
+    amp = profile_amplitude_over_first_axis(G_z, mode="fro")
+    leak = edge_leak_ratio(amp, m=edge_m, center_index=mid)
+
+    return RealSpaceKernel(
+        delta_z=delta_z,
+        kz=kz,
+        G_dz=G_z,
+        G_kz=G_kz,
+        diag=KernelDiagnostics(edge_leak_ratio=leak, center_index=mid, edge_action=edge_action, edge_m=edge_m),
+    )

@@ -45,6 +45,7 @@ def edge_leak_ratio(profile: np.ndarray, *, m: int = 8, center_index: Optional[i
         Number of points from each edge to consider.
     center_index : Optional[int]
         Index of the center point. If None, uses profile.size // 2.
+        If profile is derived from an fftshifted kernel on a centered Δz grid, the default center is N//2
     
     Returns
     -------
@@ -63,8 +64,11 @@ def edge_leak_ratio(profile: np.ndarray, *, m: int = 8, center_index: Optional[i
         raise ValueError("m must be positive.")
     if 2 * m > p.size:
         raise ValueError("m too large for profile size.")
-
+    
     c = (p.size // 2) if center_index is None else int(center_index)
+    if not (0 <= c < p.size):
+        raise ValueError(f"center_index={c} out of bounds for profile of size {p.size}.")
+
     denom = p[c] if p[c] != 0.0 else 1e-300
     edges = np.r_[p[:m], p[-m:]]
     return float(edges.max() / denom)
