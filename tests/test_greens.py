@@ -8,10 +8,17 @@ from kubo.config import PhysicsConfig, GridConfig
 from kubo.greens import (
     BulkHamiltonian,
     kspace_greens_retarded_matrix,
+    kspace_greens_retarded_matrix_batched,
     kspace_greens_retarded,
+    kspace_greens_retarded_on_kz_grid,
     _fourier_kz_to_z,
+    fourier_kz_to_z,
     realspace_greens_retarded,
+    realspace_greens_retarded_with_kz,
+    delta_z_zero_index,
+    realspace_kernel_retarded_with_meta,
 )
+
 from kubo.grids import build_delta_z_kz_grids_fft
 
 # ---------------------------------------------
@@ -208,5 +215,177 @@ def test_realspace_greens_retarded_constant_H(grid: GridConfig,
     assert G_z[mid, 0, 0].imag < 0.0
 
     
+# endregion
+# ---------------------------------------------
+
+# ---------------------------------------------
+# region NEW: batched k-space GF
+# ---------------------------------------------
+def test_kspace_greens_retarded_matrix_batched_matches_loop(physics: PhysicsConfig):
+    rng = np.random.default_rng(0)
+    omega = 0.7
+    eta = physics.eta
+
+    # batch of 2x2 matrices, make them Hermitian-ish to be well-behaved
+    A = rng.normal(size=(5, 2, 2)) + 1j * rng.normal(size=(5, 2, 2))
+    h_batch = A + np.swapaxes(A.conj(), -1, -2)
+
+    G_batched = kspace_greens_retarded_matrix_batched(omega, h_batch, eta)
+    assert G_batched.shape == h_batch.shape
+    assert np.iscomplexobj(G_batched)
+
+    G_loop = np.stack([kspace_greens_retarded_matrix(omega, h_batch[i], eta) for i in range(h_batch.shape[0])], axis=0)
+    assert np.allclose(G_batched, G_loop, atol=1e-12)
+
+
+def test_kspace_greens_retarded_matrix_batched_accepts_single_matrix(physics: PhysicsConfig):
+    omega = 1.2
+    eta = physics.eta
+    h = np.array([[0.3, 0.1], [0.1, -0.2]], dtype=float)
+
+    G1 = kspace_greens_retarded_matrix(omega, h, eta)
+    G2 = kspace_greens_retarded_matrix_batched(omega, h, eta)
+
+    assert G2.shape == (2, 2)
+    assert np.allclose(G2, G1, atol=1e-12)
+
+
+def test_kspace_greens_retarded_matrix_batched_rejects_bad_shape(physics: PhysicsConfig):
+    omega = 1.0
+    eta = physics.eta
+
+    with pytest.raises(ValueError):
+        kspace_greens_retarded_matrix_batched(omega, np.array([1.0, 2.0, 3.0]), eta)  # ndim < 2
+
+    with pytest.raises(ValueError):
+        kspace_greens_retarded_matrix_batched(omega, np.zeros((4, 2, 3)), eta)  # last two axes not square
+
+
+# endregion
+# ---------------------------------------------
+
+
+# ---------------------------------------------
+# region NEW: kz-grid helpers + public wrappers
+# ---------------------------------------------
+def test_kspace_greens_retarded_on_kz_grid_matches_pointwise(physics: PhysicsConfig, two_by_two_h: BulkHamiltonian):
+    omega = 0.4
+    kx, ky = 0.2, -0.1
+    kz = np.linspace(-1.0, 1.0, 9)
+
+    G_kz = kspace_greens_retarded_on_kz_grid(omega, kx, ky, kz, two_by_two_h, physics)
+    assert G_kz.shape == (kz.size, 2, 2)
+    assert np.iscomplexobj(G_kz)
+
+    for i in range(kz.size):
+        G_i = kspace_greens_retarded(omega, kx, ky, float(kz[i]), two_by_two_h, physics)
+        assert np.allclose(G_kz[i], G_i, atol=1e-12)
+
+
+def test_kspace_greens_retarded_on_kz_grid_rejects_non_1d_kz(physics: PhysicsConfig, constant_h: BulkHamiltonian):
+    kz_bad = np.zeros((3, 3), dtype=float)
+    with pytest.raises(ValueError):
+        kspace_greens_retarded_on_kz_grid(1.0, 0.0, 0.0, kz_bad, constant_h, physics)
+
+
+def test_fourier_kz_to_z_wrapper_is_identical(grid: GridConfig):
+    z, kz = build_delta_z_kz_grids_fft(grid)
+    N = grid.nz
+    G_kz = (np.arange(N) + 1j * np.arange(N)[::-1]).astype(complex)
+
+    a = _fourier_kz_to_z(G_kz, grid, axis=0)
+    b = fourier_kz_to_z(G_kz, grid, axis=0)
+    assert np.allclose(a, b, atol=0.0)
+
+
+def test_delta_z_zero_index_matches_convention(grid: GridConfig):
+    z, _ = build_delta_z_kz_grids_fft(grid)
+    mid = delta_z_zero_index(grid)
+
+    assert mid == grid.nz // 2
+    assert z[mid] == pytest.approx(0.0)
+
+
+# endregion
+# ---------------------------------------------
+
+
+# ---------------------------------------------
+# region NEW: real-space with kz + kernel meta object
+# ---------------------------------------------
+def test_realspace_greens_retarded_with_kz_consistency(grid: GridConfig, physics: PhysicsConfig, constant_h: BulkHamiltonian):
+    omega = 0.9
+    kx = 0.0
+    ky = 0.0
+
+    delta_z, kz, G_z, G_kz = realspace_greens_retarded_with_kz(
+        omega=omega, kx=kx, ky=ky, H=constant_h, physics=physics, grid=grid
+    )
+
+    N = grid.nz
+    assert delta_z.shape == (N,)
+    assert kz.shape == (N,)
+    assert G_z.shape == (N, 1, 1)
+    assert G_kz.shape == (N, 1, 1)
+
+    # Definition: G_z should be the FFT of G_kz with the module’s convention.
+    G_z_re = _fourier_kz_to_z(G_kz, grid, axis=0)
+    assert np.allclose(G_z, G_z_re, atol=1e-12)
+
+
+def test_realspace_kernel_retarded_with_meta_carry_k_info_false(grid: GridConfig, physics: PhysicsConfig, constant_h: BulkHamiltonian):
+    rk = realspace_kernel_retarded_with_meta(
+        omega=1.0, kx=0.0, ky=0.0, H=constant_h, physics=physics, grid=grid,
+        carry_k_info=False, edge_m=7, edge_action="none"
+    )
+
+    assert rk.kz is None
+    assert rk.G_kz is None
+    assert rk.delta_z.shape == (grid.nz,)
+    assert rk.G_dz.shape[-2:] == (1, 1)
+    assert rk.diag.center_index == grid.nz // 2
+    assert rk.diag.edge_m == 7
+    assert rk.diag.edge_action == "none"
+
+    # constant-H case -> delta-like center peak => edges ~0 => tiny leak
+    assert rk.diag.edge_leak_ratio <= 1e-8
+
+
+def test_realspace_kernel_retarded_with_meta_carry_k_info_true(grid: GridConfig, physics: PhysicsConfig, constant_h: BulkHamiltonian):
+    rk = realspace_kernel_retarded_with_meta(
+        omega=1.0, kx=0.0, ky=0.0, H=constant_h, physics=physics, grid=grid,
+        carry_k_info=True, edge_m=5, edge_action="warn"
+    )
+
+    assert rk.kz is not None
+    assert rk.G_kz is not None
+    assert rk.kz.shape == (grid.nz,)
+    assert rk.G_kz.shape == (grid.nz, 1, 1)
+
+
+def test_realspace_kernel_retarded_with_meta_invalid_edge_action_warns(grid: GridConfig, physics: PhysicsConfig, constant_h: BulkHamiltonian):
+    with pytest.warns(UserWarning):
+        _ = realspace_kernel_retarded_with_meta(
+            omega=1.0, kx=0.0, ky=0.0, H=constant_h, physics=physics, grid=grid,
+            carry_k_info=False, edge_action="definitely_not_valid"
+        )
+
+@pytest.mark.parametrize("dim", [1, 2])
+def test_kspace_greens_retarded_matrix_batched_matches_loop_dims(physics: PhysicsConfig, dim: int):
+    rng = np.random.default_rng(0)
+    omega = 0.7
+    eta = physics.eta
+    B = 5
+
+    A = rng.normal(size=(B, dim, dim)) + 1j * rng.normal(size=(B, dim, dim))
+    h_batch = A + np.swapaxes(A.conj(), -1, -2)
+
+    G_batched = kspace_greens_retarded_matrix_batched(omega, h_batch, eta)
+    G_loop = np.stack([kspace_greens_retarded_matrix(omega, h_batch[i], eta) for i in range(B)], axis=0)
+
+    assert G_batched.shape == (B, dim, dim)
+    assert np.allclose(G_batched, G_loop, atol=1e-12)
+
+
 # endregion
 # ---------------------------------------------

@@ -10,7 +10,8 @@ from kubo.grids import (
     build_k_parallel_grid_polar,
     build_k_parallel_grid_cartesian,
     build_omega_grid,
-    build_delta_z_kz_grids_fft
+    build_delta_z_kz_grids_fft,
+    build_kz_grid_diagnostic
 )
 # ---------------------------------------------
 # Fixtures
@@ -247,3 +248,62 @@ def test_fft_kz_spacing_matches_box_length(cfg):
     L = 2.0 * cfg.z_max
     # spacing between the first two FFT modes is 2π/L
     assert (kz[1] - kz[0]) == pytest.approx(2.0 * np.pi / L)
+
+# endregion
+# ---------------------------------------------
+
+# ---------------------------------------------
+# region NEW: diagnostic kz grid (not FFT-coupled)
+# ---------------------------------------------
+def test_build_kz_grid_diagnostic_basic_properties(cfg: GridConfig):
+    kz = build_kz_grid_diagnostic(cfg, nkz=2001, kz_max=3.5)
+
+    assert kz.shape == (2001,)
+    assert kz.dtype == np.float64
+
+    # inclusive endpoints
+    assert kz[0] == pytest.approx(-3.5)
+    assert kz[-1] == pytest.approx(3.5)
+
+    # monotonic, uniform spacing
+    dk = np.diff(kz)
+    assert np.all(dk > 0)
+    assert np.allclose(dk, dk[0])
+
+    # odd nkz => exact 0 in the center
+    mid = 2001 // 2
+    assert kz[mid] == pytest.approx(0.0)
+
+
+def test_build_kz_grid_diagnostic_default_kz_max_uses_cfg_k_max(cfg: GridConfig):
+    kz = build_kz_grid_diagnostic(cfg, nkz=101)  # kz_max=None by default
+    assert kz[0] == pytest.approx(-cfg.k_max)
+    assert kz[-1] == pytest.approx(cfg.k_max)
+
+
+def test_build_kz_grid_diagnostic_requires_odd_nkz(cfg: GridConfig):
+    with pytest.raises(ValueError):
+        build_kz_grid_diagnostic(cfg, nkz=2000, kz_max=1.0)
+
+
+@pytest.mark.parametrize("kz_max", [0.0, -1.0, -1e-12])
+def test_build_kz_grid_diagnostic_rejects_nonpositive_kz_max(cfg: GridConfig, kz_max: float):
+    with pytest.raises(ValueError):
+        build_kz_grid_diagnostic(cfg, nkz=101, kz_max=kz_max)
+
+
+def test_build_kz_grid_diagnostic_independent_of_z_box(cfg: GridConfig):
+    # guardrail: changing the FFT box (z_max) should not affect the diagnostic grid
+    cfg2 = GridConfig(
+        nz=cfg.nz,
+        z_max=cfg.z_max * 10.0,
+        nk_parallel=cfg.nk_parallel,
+        nomega=cfg.nomega,
+    )
+    kz1 = build_kz_grid_diagnostic(cfg, nkz=101)   # defaults to cfg.k_max
+    kz2 = build_kz_grid_diagnostic(cfg2, nkz=101)  # defaults to cfg2.k_max (same as cfg.k_max)
+
+    assert np.allclose(kz1, kz2, rtol=0.0, atol=0.0)
+
+# endregion
+# ---------------------------------------------
