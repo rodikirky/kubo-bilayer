@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import warnings
 from numpy.typing import NDArray 
 from typing import Callable
 from dataclasses import dataclass
@@ -307,10 +308,10 @@ class KernelDiagnostics:
 
 @dataclass(frozen=True)
 class RealSpaceKernel:
-    delta_z: NDArray[np.float64]   # (N,)
-    kz: NDArray[np.float64]        # (N,) FFT kz grid (optional but nice)
-    G_dz: ArrayC                   # (N, dim, dim)
-    G_kz: ArrayC                   # (N, dim, dim) (optional)
+    delta_z: NDArray[np.float64]    # (N,)
+    kz: NDArray[np.float64] | None  # (N,) FFT kz grid (optional but nice for diagnostic plots)
+    G_dz: ArrayC                    # (N, dim, dim)
+    G_kz: ArrayC | None             # (N, dim, dim) (optional)
     diag: KernelDiagnostics
 
 def realspace_kernel_retarded_with_meta(
@@ -320,17 +321,23 @@ def realspace_kernel_retarded_with_meta(
         H: BulkHamiltonian,
         physics: PhysicsConfig,
         grid: GridConfig,
+        carry_k_info: bool = False,     # Set carry_k_info = True for kz, G_kz metadata
         edge_m: int = 10,
         edge_action: str = "warn"       # "none"|"warn"|"error"
         ) -> RealSpaceKernel:
-    delta_z, kz, G_z, G_kz = realspace_greens_retarded_with_kz(omega,kx,ky,H,physics,grid)
-
+    if carry_k_info:
+        delta_z, kz, G_z, G_kz = realspace_greens_retarded_with_kz(omega,kx,ky,H,physics,grid)
+    else:
+        delta_z, G_z = realspace_greens_retarded(omega,kx,ky,H,physics,grid)
+        kz = None
+        G_kz = None
     N = delta_z.size
     mid = N // 2
 
     amp = profile_amplitude_over_first_axis(G_z, mode="fro")
     leak = edge_leak_ratio(amp, m=edge_m, center_index=mid)
-
+    if edge_action not in {"warn", "error", "none"}:
+        warnings.warn(f"Choose edge_action from 'warn', 'error', 'none'. Got {edge_action}, will be treated like 'none'.")
     return RealSpaceKernel(
         delta_z=delta_z,
         kz=kz,

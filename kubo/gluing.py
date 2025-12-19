@@ -33,10 +33,21 @@ def precompute_gluing_from_bulk_kernels(
 ) -> GluingPrecompute:
     
     delta_z = gL.delta_z  # (N,); relative z grid, delta_z = z - z'
-    assert np.allclose(gL.delta_z, gR.delta_z)
     N = delta_z.size
     mid = N // 2
     dz_step = float(delta_z[1] - delta_z[0])
+    # basic checks
+    if not np.allclose(gL.delta_z, gR.delta_z):
+        raise ValueError("Left/right delta_z grids differ.")
+    if not np.isclose(delta_z[mid], 0.0):
+        raise ValueError("delta_z grid must be centered so that delta_z[mid] == 0.")
+    if not np.allclose(np.diff(delta_z), dz_step):
+        raise ValueError("delta_z must be uniformly spaced.")
+    if not np.allclose(delta_z, -delta_z[::-1], atol=1e-12, rtol=0):
+        raise ValueError("delta_z must be symmetric: delta_z == -delta_z[::-1].")
+    if gL.G_dz.shape != gR.G_dz.shape:
+        raise ValueError(f"Left and right bulk GF must have same shape; got {gL.G_dz.shape} vs {gR.G_dz.shape}.")
+
 
     gL_dz = gL.G_dz       # (N,n,n); left-side bulk retarded Green's function G_L(z,z') = g_L(z - z')
     gR_dz = gR.G_dz
@@ -46,7 +57,7 @@ def precompute_gluing_from_bulk_kernels(
     leak_L = gL.diag.edge_leak_ratio
     leak_R = gR.diag.edge_leak_ratio
     leak = max(leak_L, leak_R)
-    if gL.diag.edge_action in {"warn","error"} or gR.diag.edge_action == {"warn","error"}:
+    if gL.diag.edge_action in {"warn","error"} or gR.diag.edge_action in {"warn","error"}:
         # configurable thresholds (suggested defaults)
         warn_thr = min(gL.diag.edge_warn, gR.diag.edge_warn)
         err_thr = min(gL.diag.edge_error, gR.diag.edge_error)
@@ -65,16 +76,6 @@ def precompute_gluing_from_bulk_kernels(
 
     # Canonical absolute z grid equals centered delta_z grid
     z_abs = delta_z.copy()
-
-    # basic checks
-    assert np.isclose(delta_z[mid], 0.0)
-    assert np.isclose(dz_step, float(delta_z[mid+1] - delta_z[mid]))
-    assert np.isclose(delta_z[mid], 0.0)
-    assert np.isclose(delta_z[mid+1] - delta_z[mid], dz_step)
-    # optional: check uniform spacing globally
-    assert np.allclose(np.diff(delta_z), dz_step)
-    assert np.allclose(delta_z, -delta_z[::-1], atol=1e-12, rtol=0)
-
 
     GL00 = gL_dz[mid]
     GR00 = gR_dz[mid]
@@ -130,11 +131,35 @@ def _grid_alignment_check(dz_mat, dz_step):
     if np.max(np.abs(offset - idx0)) > 1e-6:
         raise ValueError("Δz values are not aligned with dz_step.")
 
-def gather_kernel_from_z_zp(
-    delta_z: NDArray[np.float64],   # (N,)
+def _build_dz_index(
+    delta_z: np.ndarray, # (N,)
+    z: np.ndarray,       # (Nz,)
+    zp: np.ndarray,      # (Nzp,)
+    *,
+    tol: float = 1e-6,   # rounding tolerance
+):
+    """
+    Build (i,j) index matrix of (z_i - zp_j)_ij
+    """
+    N = delta_z.size
+    mid = N // 2
+    dz_step = float(delta_z[1] - delta_z[0])
+
+    # (Nz, Nzp)
+    offset = (z[:, None] - zp[None, :]) / dz_step
+    idx0 = np.rint(offset).astype(int)
+
+    if np.max(np.abs(offset - idx0)) > tol:
+        raise ValueError("Δz values are not aligned with dz_step.")
+
+    idx = idx0 + mid
+    ok = (idx >= 0) & (idx < N)
+    return idx, ok
+
+def gather_kernel(
     g_dz: ArrayC,                   # (N,n,n)
-    z: NDArray[np.float64],         # (Nz,)
-    zp: NDArray[np.float64],        # (Nzp,)
+    idx: np.ndarray,    # (Nz,Nzp)
+    ok: np.ndarray,     # (Nz,Nzp)
     *,
     out_of_range: str = "zero",     # "zero" or "error"
 ) -> ArrayC:
@@ -142,27 +167,9 @@ def gather_kernel_from_z_zp(
     Return g(z - z') for all pairs (z_i, zp_j).
     Output shape: (Nz, Nzp, n, n).
     """
-    z = np.asarray(z, dtype=float)
-    zp = np.asarray(zp, dtype=float)
-
-    dz_mat = z[:, None] - zp[None, :]              # (Nz,Nzp)
-
-    N = delta_z.size
-    mid = N // 2
-    dz_step = float(delta_z[1] - delta_z[0])
-
-    # Map dz -> nearest grid index
-    _grid_alignment_check(dz_mat, dz_step) # raises, if z grids are not aligned
-    idx = np.rint(dz_mat / dz_step).astype(int) + mid
-    ok = (idx >= 0) & (idx < N)
-    
     if out_of_range == "error":
         if not np.all(ok):
-            bad = dz_mat[~ok]
-            raise ValueError(
-                f"Δz contains values outside the kernel grid range "
-                f"[{delta_z[0]}, {delta_z[-1]}]. Example bad Δz: {bad.flat[0]}"
-            )
+            raise ValueError("Δz contains values outside the kernel grid range.")
         return g_dz[idx]
 
     if out_of_range != "zero":
@@ -173,7 +180,7 @@ def gather_kernel_from_z_zp(
     out_g_dzzp[ok] = g_dz[idx[ok]]
     # zero everywhere where z-z' is not represented on the FFT grid, i.e. out of resolution bounds
     # the validity of this is heavily informed by the grid design.
-    return out_g_dzzp 
+    return out_g_dzzp  # (Nz, Nzp, n, n)
 
 
 def glued_retarded_greens_batched(
@@ -197,15 +204,17 @@ def glued_retarded_greens_batched(
 
 
     if z is not None:
-        warnings.warn("Custom z-grid may not align with zp and delta_z. Be careful to ensure alignment.")
-        z = np.asarray(z, dtype=float)
-        zp = np.asarray(pre.z_abs, dtype=float)
-        #dz_mat = z[:, None] - zp[None, :]
-        #_grid_alignment_check(dz_mat, dz_step) # raises, if z grids are not aligned
+        warnings.warn("Custom z-grid may not align with zp and delta_z. Be careful to ensure alignment.", UserWarning)
+        z = np.asarray(z, dtype=float) # (Nz,)
+        zp = np.asarray(pre.z_abs, dtype=float) # (Nzp,)
+        dz_mat = z[:, None] - zp[None, :] # matrix of dz_ij = z_i - zp_j, shape (Nz,Nzp)
+        _grid_alignment_check(dz_mat, dz_step) # raises, if z grids are not aligned
     else:
         z = np.asarray(pre.z_abs, dtype=float)
         zp = np.asarray(pre.z_abs, dtype=float)
+        dz_mat = z[:, None] - zp[None, :] # matrix of dz_ij = z_i - zp_j
     
+    idx_zzp, ok_zzp = _build_dz_index(delta_z, z, zp)
     n = pre.G00.shape[0]
 
     # side masks
@@ -231,6 +240,18 @@ def glued_retarded_greens_batched(
     # Valid index masks (in-range only)
     ok_z  = (iz  >= 0) & (iz  < delta_z.size)
     ok_zp = (izp >= 0) & (izp < delta_z.size)
+    # Enforce contract for z and z' being representable on the kernel grid
+    if np.any(~ok_z):
+        if out_of_range == "error":
+            raise ValueError("z contains values outside the kernel grid range.")
+        elif out_of_range == "zero":
+            # Important: prevent nonzero core from default -I
+            F[~ok_z] = 0.0
+    if np.any(~ok_zp):
+        if out_of_range == "error":
+            raise ValueError("z' contains values outside the kernel grid range.")
+        elif out_of_range == "zero":
+            Fbar[~ok_zp] = 0.0
 
     # Side-dependent selection
     # z<0 -> use left precomputed F_L; z>0 -> use right precomputed F_R
@@ -252,17 +273,18 @@ def glued_retarded_greens_batched(
     # Same-side barred half-space contributions:
     # GL_bar = gL(z-z') - gL(z-0) inv_GL00 gL(0-z')
     # GR_bar = gR(z-z') - gR(z-0) inv_GR00 gR(0-z')
-    dz_mat = z[:, None] - zp[None, :] # matrix of dz_ij = z_i - zp_j
 
-    GL = gather_kernel_from_z_zp(delta_z, gL_dz, z,  zp, out_of_range=out_of_range)
-    GR = gather_kernel_from_z_zp(delta_z, gR_dz, z,  zp, out_of_range=out_of_range)
+    GL = gather_kernel(gL_dz, idx_zzp, ok_zzp, out_of_range=out_of_range)
+    GR = gather_kernel(gR_dz, idx_zzp, ok_zzp, out_of_range=out_of_range)
 
     zp0 = np.array([0.0], dtype=float)
-    gL_z0 = gather_kernel_from_z_zp(delta_z, gL_dz, z,  zp0, out_of_range=out_of_range)  # (Nz,1,n,n)
-    gR_z0 = gather_kernel_from_z_zp(delta_z, gR_dz, z,  zp0, out_of_range=out_of_range)
+    idx_z0, ok_z0 = _build_dz_index(delta_z, z, zp0)
+    gL_z0 = gather_kernel(gL_dz, idx_z0, ok_z0, out_of_range=out_of_range)  # (Nz,1,n,n)
+    gR_z0 = gather_kernel(gR_dz, idx_z0, ok_z0, out_of_range=out_of_range)
     z0 = np.array([0.0], dtype=float)
-    gL_0zp = gather_kernel_from_z_zp(delta_z, gL_dz, z0, zp, out_of_range=out_of_range)  # (1,Nzp,n,n)
-    gR_0zp = gather_kernel_from_z_zp(delta_z, gR_dz, z0, zp, out_of_range=out_of_range)
+    idx_0zp, ok_0zp = _build_dz_index(delta_z, z0, zp)
+    gL_0zp = gather_kernel(gL_dz, idx_0zp, ok_0zp, out_of_range=out_of_range)  # (1,Nzp,n,n)
+    gR_0zp = gather_kernel(gR_dz, idx_0zp, ok_0zp, out_of_range=out_of_range)
 
     GL_bar = GL - (gL_z0 @ pre.inv_GL00[None, None, :, :] @ gL_0zp)
     GR_bar = GR - (gR_z0 @ pre.inv_GR00[None, None, :, :] @ gR_0zp)
