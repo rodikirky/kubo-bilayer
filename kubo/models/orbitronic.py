@@ -75,6 +75,13 @@ def canonical_L_matrices(basis: Optional[ArrayC] = None) -> Tuple[ArrayC, ArrayC
 # Bulk orbitronic Hamiltonian (N or F)
 # ----------------------------------------------------------------------
 @dataclass
+class OrbitronicBulkParams:
+    mass: float
+    gamma: float
+    J: float
+    magnetisation: Union[Sequence[float],NDArray[np.float64]]
+
+@dataclass
 class OrbitronicBulk:
     """
     Orbitronic bulk Hamiltonian
@@ -87,25 +94,25 @@ class OrbitronicBulk:
 
     This class is agnostic to N vs F: you simply use different parameters.
     """
-
     mass: float
     gamma: float
     J: float
     magnetisation: NDArray[np.float64]
-    L: Tuple[ArrayC, ArrayC, ArrayC]
+    L: Tuple[ArrayC, ArrayC, ArrayC] = canonical_L_matrices()
 
     @classmethod
     def from_params(
         cls,
-        mass: float,
-        gamma: float,
-        J: float,
-        magnetisation: Union[Sequence[float],NDArray[np.float64]], # method transforms to NDArray
+        params: OrbitronicBulkParams,
         basis: Optional[ArrayC] = None,
     ) -> "OrbitronicBulk":
         """Generates OrbitronicBulk from parameters using the canonical L matrices."""
+        mass = params.mass
         if mass <= 0:
             raise ValueError("mass must be positive.")
+        gamma = params.gamma
+        J = params.J
+        magnetisation = params.magnetisation
         M = _as_real3(magnetisation)
         L = canonical_L_matrices(basis)
         return cls(mass=mass, gamma=gamma, J=J, magnetisation=M, L=L) # type: ignore
@@ -217,12 +224,6 @@ class OrbitronicBulk:
         J_i_alpha = 0.5 * (v_i @ L_alpha + L_alpha @ v_i)
         return J_i_alpha
 
-@dataclass
-class OrbitronicBulkParams:
-    mass: float
-    gamma: float
-    J: float
-    magnetisation: NDArray[np.float64]
 
 # ----------------------------------------------------------------------
 # Interface Hamiltonian

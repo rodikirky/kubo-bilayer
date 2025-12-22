@@ -76,12 +76,13 @@ def test_canonical_L_matrices_rotated_basis_preserves_commutation():
 # region test OrbitronicBulk
 # ---------------------------------------------------------------------
 def test_orbitronic_bulk_from_params_positive_mass_and_shape():
-    bulk = OrbitronicBulk.from_params(
+    params = OrbitronicBulkParams(
         mass=2.0,
         gamma=0.5,
         J=0.3,
         magnetisation=[0.1, 0.2, 0.3],
     )
+    bulk = OrbitronicBulk.from_params(params=params)
     assert isinstance(bulk.mass, float)
     assert bulk.mass == pytest.approx(2.0)
     assert bulk.gamma == pytest.approx(0.5)
@@ -98,18 +99,17 @@ def test_orbitronic_bulk_from_params_positive_mass_and_shape():
 
 def test_orbitronic_bulk_from_params_rejects_non_positive_mass():
     with pytest.raises(ValueError):
-        OrbitronicBulk.from_params(
-            mass=-1.0,
+        params= OrbitronicBulkParams(mass=-1.0,
             gamma=0.5,
             J=0.3,
-            magnetisation=[0.0, 0.0, 1.0],
-        )
+            magnetisation=_as_real3([0.0, 0.0, 1.0]))
+        bulk = OrbitronicBulk.from_params(params)
 
 def test_orbitronic_bulk_potential_k_zero_reduces_to_J_M_dot_L():
     gamma = 0.7
     J = 0.4
     M = np.array([0.1, -0.2, 0.3])
-    bulk = OrbitronicBulk.from_params(
+    bulk = OrbitronicBulk(
         mass=1.0,
         gamma=gamma,
         J=J,
@@ -124,11 +124,11 @@ def test_orbitronic_bulk_potential_k_zero_reduces_to_J_M_dot_L():
 
 
 def test_orbitronic_bulk_potential_zero_when_gamma_and_J_zero():
-    bulk = OrbitronicBulk.from_params(
+    bulk = OrbitronicBulk(
         mass=1.0,
         gamma=0.0,
         J=0.0,
-        magnetisation=[1.0, 0.0, 0.0],
+        magnetisation=_as_real3([1.0, 0.0, 0.0]),
     )
     k = np.array([0.1, 0.2, 0.3])
     V = bulk.potential(k)
@@ -141,22 +141,22 @@ def test_orbitronic_bulk_potential_zero_when_gamma_and_J_zero():
 
 
 def test_orbitronic_bulk_hamiltonian_allows_neg_gamma_and_J():
-    bulk = OrbitronicBulk.from_params(
+    bulk = OrbitronicBulk(
         mass=1.5,
         gamma=-0.8,
         J=-0.2,
-        magnetisation=[0.1, 0.2, 0.3],
+        magnetisation=_as_real3([0.1, 0.2, 0.3]),
     )
     k = [0.4, -0.1, 0.2]
     H = bulk.hamiltonian(k) 
     
 
 def test_orbitronic_bulk_hamiltonian_is_hermitian():
-    bulk = OrbitronicBulk.from_params(
+    bulk = OrbitronicBulk(
         mass=1.5,
         gamma=0.8,
         J=0.2,
-        magnetisation=[0.1, 0.2, 0.3],
+        magnetisation=_as_real3([0.1, 0.2, 0.3]),
     )
     k = [0.4, -0.1, 0.2]
     H = bulk.hamiltonian(k)
@@ -165,11 +165,11 @@ def test_orbitronic_bulk_hamiltonian_is_hermitian():
     assert np.allclose(H.conj().T, H)
 
 def test_velocity_components_shape_and_hermiticity():
-    bulk = OrbitronicBulk.from_params(
+    bulk = OrbitronicBulk(
         mass=1.3,
         gamma=0.0,
         J=0.0,
-        magnetisation=[0.0, 0.0, 1.0],
+        magnetisation=_as_real3([0.0, 0.0, 1.0]),
     )
     k = _as_real3([0.2, 0.3, -0.1])
     v_x, v_y, v_z = bulk.velocity_components(k)
@@ -182,11 +182,11 @@ def test_velocity_components_shape_and_hermiticity():
 
 @pytest.mark.parametrize("direction", ["x", "y", "z"])
 def test_velocity_components_match_finite_difference(direction):
-    bulk = OrbitronicBulk.from_params(
+    bulk = OrbitronicBulk(
         mass=1.0,
         gamma=0.5,
         J=0.2,
-        magnetisation=[0.1, 0.0, 0.3],
+        magnetisation=_as_real3([0.1, 0.0, 0.3]),
     )
     hbar = 1.0
     k = _as_real3([0.4, -0.2, 0.1])
@@ -211,11 +211,11 @@ def test_velocity_components_match_finite_difference(direction):
 @pytest.mark.parametrize("flow_dir", ["x", "y", "z"])
 @pytest.mark.parametrize("L_comp", ["x", "y", "z"])
 def test_orbital_current_operator_basic(flow_dir, L_comp):
-    bulk = OrbitronicBulk.from_params(
+    bulk = OrbitronicBulk(
         mass=1.0,
         gamma=0.4,
         J=0.3,
-        magnetisation=[0.1, 0.2, 0.0],
+        magnetisation=_as_real3([0.1, 0.2, 0.0]),
     )
     k = [0.3, -0.2, 0.5]
 
@@ -227,11 +227,11 @@ def test_orbital_current_operator_basic(flow_dir, L_comp):
 
 
 def test_orbital_current_operator_zero_at_k_zero():
-    bulk = OrbitronicBulk.from_params(
+    bulk = OrbitronicBulk(
         mass=1.0,
         gamma=0.4,
         J=0.3,
-        magnetisation=[0.1, 0.2, 0.0],
+        magnetisation=_as_real3([0.1, 0.2, 0.0]),
     )
     k_zero = [0.0, 1.0, 0.0] # non-flow direction and non-L direction can be non-zero
 
@@ -360,7 +360,7 @@ def test_orbitronic_bulk_from_params_roundtrip():
     )
 
     # params -> model
-    bulk = OrbitronicBulk.from_params(**vars(params))
+    bulk = OrbitronicBulk.from_params(params)
 
     # model -> params again
     params_rt = OrbitronicBulkParams(

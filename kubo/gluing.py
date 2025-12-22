@@ -188,6 +188,7 @@ def glued_retarded_greens_batched(
     z: NDArray[np.float64] | None = None,         # (Nz,)
     *,
     out_of_range: str = "zero",
+    core_only: bool = False
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], ArrayC]:
     """
     Batched glued retarded Green's function evaluated on (z, zp), where z can be custom choice.
@@ -269,7 +270,11 @@ def glued_retarded_greens_batched(
 
     # Core term: F(z) G00 Fbar(z')
     core = F[:, None, :, :] @ pre.G00[None, None, :, :] @ Fbar[None, :, :, :]  # (Nz, Nzp, n, n)
-
+    
+    # Early exit, if half-space contributions are not needed.
+    if core_only:
+        return z, zp, core
+    
     # Same-side barred half-space contributions:
     # GL_bar = gL(z-z') - gL(z-0) inv_GL00 gL(0-z')
     # GR_bar = gR(z-z') - gR(z-0) inv_GR00 gR(0-z')
