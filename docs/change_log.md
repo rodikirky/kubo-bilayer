@@ -47,13 +47,13 @@ From here on, breaking changes should bump MAJOR.
 
 ### 0.1.0 (2025-12-29)
 
-### Breaking
+#### Breaking
 - Renamed `ModelConfig.hamiltonian_factory` → `ModelConfig.hamiltonian_function`.
 - Added `DevPreset.bulk_side` and `DevPreset.plot_channels`.
 - Updated the presets accordingly
 
 
-### User-facing
+#### User-facing
 - Added new model-agnostic plotting script `plot_bulk_greens` to replace toy-specific `plot_fft_decay_toy`
 - Added \docs folder and md files there on `diagnostics`, `status` and this `changelog`
 - Added kubo\diagnostics folder and `kz_coverage` module to compute diagnostic metrics
@@ -64,7 +64,7 @@ From here on, breaking changes should bump MAJOR.
 - Added sub-dicts to `PRESETS` called `TOY_PRESETS` and `ORBITRONIC_PRESETS`
 - Added defaults to `OrbitronicBulkParams` and `OrbitronicInterfaceParams`
 
-### Internal
+#### Internal
 - Refactored registry imports to relative imports.
 - Updated docstrings
 - Added type checking safety nets in ModelConfig in config.py
