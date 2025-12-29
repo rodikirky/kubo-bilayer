@@ -41,6 +41,11 @@ Hence, “0.x” is read as “still evolving”.
 From here on, breaking changes should bump MAJOR.
 
 ## Unreleased
+(empty)
+
+## Logbook
+
+### 0.1.0 (2025-12-29)
 
 ### Breaking
 - Renamed `ModelConfig.hamiltonian_factory` → `ModelConfig.hamiltonian_function`.
@@ -64,7 +69,3 @@ From here on, breaking changes should bump MAJOR.
 - Updated docstrings
 - Added type checking safety nets in ModelConfig in config.py
 - Created VS Code style regions in toy.py and orbitronic.py
-
-## Logbook
-
-### 0.1.0 (2025-12-29)

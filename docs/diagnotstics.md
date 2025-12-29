@@ -23,14 +23,14 @@ Run the model-agnostic bulk plotting script for various choices of model and par
 
 Defaults:
 ```bash
-python -m kubo.scripts.plot_bulk_greens --preset toy_fft_near_shell_mid
-python -m kubo.scripts.plot_bulk_greens --preset orbitronic_fft_mid
+python -m scripts.plot_bulk_greens --preset toy_fft_near_shell_mid
+python -m scripts.plot_bulk_greens --preset orbitronic_fft_mid
 ```
 Custom:
 ```bash
-python -m kubo.scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --eta 0.05
-python -m kubo.scripts.plot_bulk_greens --preset orbitronic_fft_mid --side right
-python -m kubo.scripts.plot_bulk_greens --preset orbitronic_fft_mid --ij1 0 0 --ij2 2 2
-python -m kubo.scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --kz-diag-max 10 --nkz-diag 8001
-python -m kubo.scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --dz-zoom 50 --downsample 2
+python -m scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --eta 0.05
+python -m scripts.plot_bulk_greens --preset orbitronic_fft_mid --side right
+python -m scripts.plot_bulk_greens --preset orbitronic_fft_mid --ij1 0 0 --ij2 2 2
+python -m scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --kz-diag-max 10 --nkz-diag 8001
+python -m scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --dz-zoom 50 --downsample 2
 ```

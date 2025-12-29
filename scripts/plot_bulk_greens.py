@@ -26,43 +26,43 @@ Typical usage
 -------------
 Run as a module (recommended from repo root / installed editable package):
 
-    python -m kubo.scripts.plot_bulk_greens --preset toy_fft_near_shell_mid
+    python -m scripts.plot_bulk_greens --preset toy_fft_near_shell_mid
 
 Toy presets example:
 
-    python -m kubo.scripts.plot_bulk_greens --preset toy_fft_debug_evanescent
-    python -m kubo.scripts.plot_bulk_greens --preset toy_fft_near_shell_wrap_safe
+    python -m scripts.plot_bulk_greens --preset toy_fft_debug_evanescent
+    python -m scripts.plot_bulk_greens --preset toy_fft_near_shell_wrap_safe
 
 Orbitronic presets example (if defined):
 
-    python -m kubo.scripts.plot_bulk_greens --preset orbitronic_fft_mid
+    python -m scripts.plot_bulk_greens --preset orbitronic_fft_mid
 
 Useful overrides (without editing presets)
 ------------------------------------------
 Change frequency / momentum point:
 
-    python -m kubo.scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --omega 0.2
-    python -m kubo.scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --kx 0.5 --ky 0.25
+    python -m scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --omega 0.2
+    python -m scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --kx 0.5 --ky 0.25
 
 Change broadening η (PhysicsConfig.eta):
 
-    python -m kubo.scripts.plot_bulk_greens --preset orbitronic_fft_mid --eta 0.05
+    python -m scripts.plot_bulk_greens --preset orbitronic_fft_mid --eta 0.05
 
 Choose bulk side (left/right) for plotting:
 
-    python -m kubo.scripts.plot_bulk_greens --preset orbitronic_fft_mid --side right
+    python -m scripts.plot_bulk_greens --preset orbitronic_fft_mid --side right
 
 Choose which matrix entries to plot (two channels):
 
-    python -m kubo.scripts.plot_bulk_greens --preset orbitronic_fft_mid --ij1 0 0 --ij2 2 2
+    python -m scripts.plot_bulk_greens --preset orbitronic_fft_mid --ij1 0 0 --ij2 2 2
 
 Diagnostic kz scan controls:
 
-    python -m kubo.scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --kz-diag-max 10 --nkz-diag 8001
+    python -m scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --kz-diag-max 10 --nkz-diag 8001
 
 Plot clarity controls (zoom around Δz=0 and/or downsample point density):
 
-    python -m kubo.scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --dz-zoom 50 --downsample 2
+    python -m scripts.plot_bulk_greens --preset toy_fft_near_shell_mid --dz-zoom 50 --downsample 2
 
 Notes
 -----

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Tuple, Sequence, Optional, Literal, Union
 
 import numpy as np
@@ -79,7 +79,9 @@ class OrbitronicBulkParams:
     mass: float = 1.0
     gamma: float = 0.5
     J: float = 1.0
-    magnetisation: Union[Sequence[float],NDArray[np.float64]] = [0.0,0.0,1.0]
+    magnetisation: Union[Sequence[float],NDArray[np.float64]] = field(
+        default_factory=lambda: np.array([0.0, 0.0, 1.0], dtype=np.float64)
+    )
 
 @dataclass
 class OrbitronicBulk:
