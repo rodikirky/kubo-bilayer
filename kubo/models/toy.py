@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 
 ArrayC = NDArray[np.complex128]
 
-
+#region Params
 @dataclass
 class ToyBulkParams:
     """Parameters for a very simple 2x2 toy bulk model."""
@@ -20,8 +20,9 @@ class ToyBulkParams:
 class ToyInterfaceParams:
     """Parameters for a trivial 2x2 interface Hamiltonian."""
     strength: float = 0.0  # scalar shift on the interface
+#endregion
 
-
+#region ToyBulk
 @dataclass
 class ToyBulk:
     """
@@ -64,8 +65,9 @@ class ToyBulk:
         k2 = kx * kx + ky * ky + kz * kz
         ek = k2 / (2.0 * self.mass)
         return ek * self.identity + self.gap * self.sigma_z
+#endregion
 
-
+#region ToyInterface
 @dataclass
 class ToyInterface:
     """
@@ -82,3 +84,8 @@ class ToyInterface:
     def hamiltonian(self, kx: float, ky: float) -> ArrayC:
         _ = float(kx), float(ky)  # unused, kept for API compatibility
         return self.strength * np.eye(2, dtype=np.complex128)
+#endregion
+
+#region ToyObservable
+
+#endregion

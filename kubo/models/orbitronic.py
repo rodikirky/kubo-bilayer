@@ -10,7 +10,7 @@ ArrayC = NDArray[np.complex128]
 
 
 # ----------------------------------------------------------------------
-# Helpers
+# region Helpers
 # ----------------------------------------------------------------------
 
 
@@ -69,17 +69,17 @@ def canonical_L_matrices(basis: Optional[ArrayC] = None) -> Tuple[ArrayC, ArrayC
     Ly_p = U_dag @ Ly @ U
     Lz_p = U_dag @ Lz @ U
     return Lx_p, Ly_p, Lz_p
-
+#endregion
 
 # ----------------------------------------------------------------------
-# Bulk orbitronic Hamiltonian (N or F)
+# region Bulk orbitronic Hamiltonian (N or F)
 # ----------------------------------------------------------------------
 @dataclass
 class OrbitronicBulkParams:
-    mass: float
-    gamma: float
-    J: float
-    magnetisation: Union[Sequence[float],NDArray[np.float64]]
+    mass: float = 1.0
+    gamma: float = 0.5
+    J: float = 1.0
+    magnetisation: Union[Sequence[float],NDArray[np.float64]] = [0.0,0.0,1.0]
 
 @dataclass
 class OrbitronicBulk:
@@ -223,11 +223,21 @@ class OrbitronicBulk:
         # Symmetrized product:
         J_i_alpha = 0.5 * (v_i @ L_alpha + L_alpha @ v_i)
         return J_i_alpha
-
+#endregion
 
 # ----------------------------------------------------------------------
-# Interface Hamiltonian
+# region Interface Hamiltonian
 # ----------------------------------------------------------------------
+
+@dataclass
+class OrbitronicInterfaceParams:
+    m_int: float = 1.0
+    gamma_int: float = 0.5
+    alpha: float = 1.0
+    beta: float = 0.2
+    delta_CF: float = 1.0
+    L0: float = 1.0
+
 @dataclass
 class OrbitronicInterface:
     """
@@ -303,12 +313,8 @@ class OrbitronicInterface:
 
         H_int = self.L0 * (kinetic + V_tex + V_OR + CF_term)
         return H_int
+#endregion
 
-@dataclass
-class OrbitronicInterfaceParams:
-    m_int: float
-    gamma_int: float
-    alpha: float
-    beta: float
-    delta_CF: float
-    L0: float
+#region Observables
+
+#endregion

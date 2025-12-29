@@ -128,3 +128,48 @@ def plot_complex_components(
 def show():
     plt = _import_plt()
     plt.show()
+
+def plot_kz_diagnostic_with_fft_coverage(
+    kz_diag: np.ndarray,
+    amp_diag: np.ndarray,
+    kz_fft: np.ndarray,
+    amp_fft: np.ndarray,
+    *,
+    title: str,
+    xlabel: str = "kz",
+    ylabel: str = "|G_ij|",
+    logy: bool = True,
+    show_fft_points: bool = True,
+    shade_fft_range: bool = True,
+    label_diag: str = "wide diagnostic grid",
+    label_fft: str = "FFT kz samples",
+) -> None:
+    """
+    Plot wide diagnostic |G(kz)| and visualize FFT kz coverage in the same axes.
+
+    Overlays:
+      - Optional shaded region spanning the FFT kz range
+      - Optional scatter/marker plot of FFT sample amplitudes
+    """
+    plt = _import_plt()
+    fig, ax = plt.subplots()
+
+    ax.plot(kz_diag, amp_diag, label=label_diag)
+
+    kz_min = float(np.min(kz_fft))
+    kz_max = float(np.max(kz_fft))
+
+    if shade_fft_range:
+        ax.axvspan(kz_min, kz_max, alpha=0.2, label=f"FFT kz coverage [{kz_min:.2f}, {kz_max:.2f}]")
+
+    if show_fft_points:
+        ax.plot(kz_fft, amp_fft, linestyle="none", marker=".", label=label_fft)
+
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    if logy:
+        ax.set_yscale("log")
+
+    ax.legend()
