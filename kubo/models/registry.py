@@ -1,3 +1,7 @@
+# TODO: Needs to be tested thoroughly. Write unit tests in test_registry.py.
+# TODO: incorporate this functionality into the pipeline tests, e.g., test_toy_fft.py and test_orbitronic_gluing.py. 
+# TODO: Add docstrings to the new classes and methods where needed and the whole file.
+
 from __future__ import annotations
 
 from typing import Literal

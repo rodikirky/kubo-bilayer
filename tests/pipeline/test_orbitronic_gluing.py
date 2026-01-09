@@ -1,3 +1,6 @@
+# TODO: Altered the tests to reflect the recent changes in gluing.py and use the registry.
+# TODO: Add docstrings to the new classes and methods where needed and the whole file.
+
 from __future__ import annotations
 
 import numpy as np

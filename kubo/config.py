@@ -1,3 +1,6 @@
+# TODO: Tests need to be altered to reflect the recent changes.
+# TODO: Add docstrings to the new classes and methods where needed and the whole file.
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

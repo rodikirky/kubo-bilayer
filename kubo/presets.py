@@ -1,3 +1,6 @@
+# TODO: Old tests need to be altered and new added in test_preset.py to reflect the recent changes.
+# TODO: Add docstrings to the new classes and methods where needed and the whole file.
+
 from __future__ import annotations
 
 from dataclasses import dataclass
