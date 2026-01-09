@@ -71,7 +71,7 @@ Notes
 - The wrap-around / aliasing risk of FFT-based real-space kernels can be quickly
   assessed using the Frobenius profile and the edge-leak ratio.
 """
-
+# region Imports
 from __future__ import annotations
 
 import argparse
@@ -95,8 +95,9 @@ from kubo.plotting import (
     plot_kz_diagnostic_with_fft_coverage
 )
 from kubo.diagnostics.kz_coverage import kz_coverage_metrics
+# endregion
 
-
+# region Argument parsing
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
 
@@ -128,11 +129,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--downsample", type=int, default=1, help="Downsample factor for component plots (>=1).")
 
     return p.parse_args()
+# endregion
 
-
+# region Main script
 def main() -> None:
     args = parse_args()
 
+    # region Preset and overrides
     preset = PRESETS[args.preset]
     grid = preset.grid
     physics = preset.physics
@@ -159,7 +162,9 @@ def main() -> None:
     print(f"[run] omega={omega}, kx={kx}, ky={ky}")
     if getattr(preset, "note", ""):
         print(f"[run] note: {preset.note}")
+    # endregion
 
+    # region Grids & kernels
     # Derived FFT quantities (based on the preset grid)
     L = 2.0 * grid.z_max
     dz = L / grid.nz
@@ -200,7 +205,8 @@ def main() -> None:
     print(f"[run] kz_diag range: [{kz_diag.min():.3f}, {kz_diag.max():.3f}] (nkz={kz_diag.size})")
     amp_kz_diag = np.abs(G_kz_diag[:, i1, j1])
     amp_kz_fft = np.abs(G_kz_fft[:, i1, j1])
-
+    
+    # region Diagnostic metrics
     m = kz_coverage_metrics(kz_diag, amp_kz_diag, kz_fft, p=2.0, q_levels=(0.95, 0.99))
     print(
         "[diag] kz coverage: "
@@ -209,6 +215,9 @@ def main() -> None:
         f"K99={m['K_99']:.3f}, ratio99={m['coverage_ratio_99']:.3f}, "
         f"peak_kz={m['kz_peak']:.3f}, peak_inside_fft={bool(m['peak_inside_fft'])}"
     )
+    # endregion
+
+    # region Plotting
     # ---- Optional zoom/downsample for component plots ----
     ds = max(1, int(args.downsample))
     if args.dz_zoom is None:
@@ -223,8 +232,6 @@ def main() -> None:
         if mask is None:
             return x[::ds]
         return x[mask][idx]
-
-    # ---- Plots ----
 
     # (1) G(i1,j1)(Δz) components with optional zoom
     plot_complex_components(
@@ -269,7 +276,8 @@ def main() -> None:
     )
 
     show()
-
+    # endregion
+# endregion
 
 if __name__ == "__main__":
     main()
