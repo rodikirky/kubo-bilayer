@@ -41,7 +41,7 @@ def test_orbitronic_gluing_shapes_and_finiteness(
     orbitronic_params_default, physics_default, grid_small_fft, kpar_simple
 ):
     # Use a slightly larger eta for gluing stability on small grids
-    physics = replace(physics_default, eta=0.05)
+    physics = replace(physics_default, eta=0.05) 
 
     omega = -1.0
     kx, ky = kpar_simple
