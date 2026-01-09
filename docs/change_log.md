@@ -41,7 +41,14 @@ Hence, “0.x” is read as “still evolving”.
 From here on, breaking changes should bump MAJOR.
 
 ## Unreleased
-(empty)
+#### Breaking
+- Renamed plot_fft_decay_toy.py to DEPRplot_fft_decay_toy.py to indicate it is no longer needed since model-agnostic plot_bulk_greens.py was implemented; Not yet ready to delete it though.
+
+#### User-facing
+- ...
+
+#### Internal
+- ...
 
 ## Logbook
 
