@@ -4,7 +4,9 @@ from numpy.typing import NDArray
 from dataclasses import dataclass
 from .greens import RealSpaceKernel
 
-
+# -------------------------------------------
+# region Precompute
+# -------------------------------------------
 ArrayC = NDArray[np.complex128]
 
 @dataclass
@@ -125,6 +127,12 @@ def precompute_gluing_from_bulk_kernels(
         leak=leak
     )
 
+# endregion
+# -------------------------------------------
+
+# -------------------------------------------
+# region Grid prep
+# -------------------------------------------
 def _grid_alignment_check(dz_mat, dz_step):
     offset = dz_mat / dz_step
     idx0 = np.rint(offset).astype(int)
@@ -182,7 +190,12 @@ def gather_kernel(
     # the validity of this is heavily informed by the grid design.
     return out_g_dzzp  # (Nz, Nzp, n, n)
 
+# endregion
+# -------------------------------------------
 
+# -------------------------------------------
+# region Glued GF
+# -------------------------------------------
 def glued_retarded_greens_batched(
     pre: GluingPrecompute,
     z: NDArray[np.float64] | None = None,         # (Nz,)
@@ -195,7 +208,41 @@ def glued_retarded_greens_batched(
     zp is created along FFT grid shape, z would be too ideally.
     If custom z is required, ensure it is aligned with the delta_z grid from the real space GF.
 
-    Returns (z, zp, G) with G shape (Nz, Nzp, n, n).
+    Parameters
+    ----------
+    pre : GluingPrecompute
+        Precomputed gluing data from precompute_gluing_from_bulk_kernels.
+    z : NDArray[np.float64] | None, optional
+        Custom z grid (1D array). If None, use pre.z_abs.
+    out_of_range : str, optional
+        How to handle (z, zp) pairs where z - zp is outside the precomputed kernel grid.
+        Options are "zero" (default) to fill with zeros, or "error" to raise an error.
+    core_only : bool, optional
+        If True, only return the core term F(z) G00 Fbar(z'). Default is False.
+        Hence, by default the half-space barred contributions are included.
+
+    Returns
+    -------
+    (z, zp, G) with G shape (Nz, Nzp, n, n).
+    - z: (Nz,) array of z points
+    - zp: (Nzp,) array of z' points (from pre.z_abs)
+    - G: (Nz, Nzp, n, n) array of glued retarded Green's function values
+      If core_only is True, only the core term F(z) G00 Fbar(z') is returned.
+
+    Raises
+    ------
+    ValueError
+        If out_of_range is "error" and any (z, zp) pair leads to z - zp outside the kernel grid range.
+    
+    Notes
+    -----
+    The glued retarded Green's function is constructed as:  
+    G(z, z') = F(z) G00 Fbar(z') 
+               + Θ(-z) Θ(-z') GL_bar(z, z') 
+               + Θ(z) Θ(z') GR_bar(z, z')
+    
+    where F and Fbar are the interface correction matrices, G00 is the interface Green's function matrix,
+    and GL_bar, GR_bar are the barred half-space contributions from the left and right bulks, respectively.
     """
     delta_z = pre.delta_z
     gL_dz = pre.gL_dz
@@ -303,3 +350,6 @@ def glued_retarded_greens_batched(
     out[same_right] += GR_bar[same_right]
 
     return z, zp, out
+
+# endregion
+# -------------------------------------------
