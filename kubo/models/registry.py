@@ -175,7 +175,7 @@ def build_gluing_components(model: ModelConfig, no_defaults: bool = True
 
     # The interface Hamiltonian is a 2D mapping originally: (kx, ky) -> H_int(kx, ky).
     # We transform it into a potential that accepts (kx, ky, kz) but ignores kz
-    interface_potential = lambda kx, ky, kz: interface.hamiltonian((kx, ky)) 
+    interface_potential = lambda kx, ky, kz: interface.hamiltonian(kx, ky) 
 
     return left_hamiltonian, right_hamiltonian, left_mass, right_mass, interface_potential
 

@@ -34,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--preset",
         type=str,
-        default="TOY_GLUING_STANDARD",
+        default="toy_gluing_standard",
         choices=sorted(GLUING_PRESETS.keys()),
         help="Name of a DevGluingPreset from kubo/presets.py",
     )
