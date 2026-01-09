@@ -4,6 +4,7 @@
 from dataclasses import is_dataclass
 
 import pytest
+import numpy as np
 
 from kubo.config import (
     GridConfig,
@@ -72,9 +73,9 @@ def test_model_config_defaults():
     assert mc.bulk_left_params is None
     assert mc.bulk_right_params is None
     assert mc.interface_params is None
-    assert mc.hamiltonian_factory is None
+    assert mc.hamiltonian_function is None
 
-def test_model_config_allows_custom_params_and_factory():
+def test_model_config_does_not_allow_custom_params_and_factory():
     class DummyBulkParams:
         pass
 
@@ -82,24 +83,17 @@ def test_model_config_allows_custom_params_and_factory():
     bulk_r = DummyBulkParams()
     interface = object()
 
-    def dummy_factory():
-        return "H"
+    def dummy_function(kx,ky,kz):
+        return np.array([[1]])
 
-    mc = ModelConfig(
-        name="orbitronic",
-        bulk_left_params=bulk_l,
-        bulk_right_params=bulk_r,
-        interface_params=interface,
-        hamiltonian_factory=dummy_factory,
-    )
-
-    assert mc.name == "orbitronic"
-    assert mc.bulk_left_params is bulk_l
-    assert mc.bulk_right_params is bulk_r
-    assert mc.interface_params is interface
-    assert mc.hamiltonian_factory is dummy_factory
-    assert mc.hamiltonian_factory is not None
-    assert mc.hamiltonian_factory() == "H"
+    with pytest.raises(TypeError, match="must be OrbitronicBulkParams or None"):
+        mc = ModelConfig(
+            name="orbitronic",
+            bulk_left_params=bulk_l,
+            bulk_right_params=bulk_r,
+            interface_params=interface,
+            hamiltonian_function=dummy_function,
+        )
 
 # endregion
 # ---------------------------------------------
