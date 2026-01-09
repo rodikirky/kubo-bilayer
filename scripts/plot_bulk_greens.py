@@ -79,7 +79,7 @@ from dataclasses import asdict
 
 import numpy as np
 
-from kubo.presets import PRESETS
+from kubo.presets import BULK_PRESETS
 from kubo.models.registry import build_bulk_hamiltonian
 from kubo.grids import build_kz_grid_diagnostic
 from kubo.greens import (
@@ -105,7 +105,7 @@ def parse_args() -> argparse.Namespace:
         "--preset",
         type=str,
         default="toy_fft_near_shell_mid",
-        choices=sorted(PRESETS.keys()),
+        choices=sorted(BULK_PRESETS.keys()),
         help="Name of a DevPreset from kubo/presets.py",
     )
 
@@ -136,7 +136,7 @@ def main() -> None:
     args = parse_args()
 
     # region Preset and overrides
-    preset = PRESETS[args.preset]
+    preset = BULK_PRESETS[args.preset]
     grid = preset.grid
     physics = preset.physics
     model = preset.model
