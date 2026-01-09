@@ -39,6 +39,11 @@ class ModelConfig:
     interface_params: Optional[Any] = None
 
     # Optional override (esp. for user_defined)
+    # TODO: Think this over. Do I want to keep this?
+    # Originally intended to allow custom Hamiltonians outside the registry,
+    # but now this seems incompatible with gluing two sides together.
+    # Really, this would need to be a "Hamiltonian factory" that can distinguish sides.
+    # But then I might as well just define a new model in the registry.
     hamiltonian_function: Optional[HamiltonianFunction] = None
 
     def __post_init__(self) -> None:

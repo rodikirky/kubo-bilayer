@@ -205,6 +205,7 @@ def main() -> None:
     print(f"[run] kz_diag range: [{kz_diag.min():.3f}, {kz_diag.max():.3f}] (nkz={kz_diag.size})")
     amp_kz_diag = np.abs(G_kz_diag[:, i1, j1])
     amp_kz_fft = np.abs(G_kz_fft[:, i1, j1])
+    # endregion
     
     # region Diagnostic metrics
     m = kz_coverage_metrics(kz_diag, amp_kz_diag, kz_fft, p=2.0, q_levels=(0.95, 0.99))
