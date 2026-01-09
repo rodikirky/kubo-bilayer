@@ -41,15 +41,7 @@ Hence, “0.x” is read as “still evolving”.
 From here on, breaking changes should bump MAJOR.
 
 ## Unreleased
-#### Breaking
-- Deleted functional_trace.py and integrated it as a helper in streda.py
-
-
-#### User-facing
-- Implemented a bare-bones version of streda.py with all its core structure but without the integration algorithms
-
-#### Internal
-- ...
+(empty)
 
 ## Logbook
 
@@ -77,3 +69,11 @@ From here on, breaking changes should bump MAJOR.
 - Updated docstrings
 - Added type checking safety nets in ModelConfig in config.py
 - Created VS Code style regions in toy.py and orbitronic.py
+
+### 0.2.0 (2026-01-09)
+#### Breaking
+- Deleted functional_trace.py and integrated it as a helper in streda.py
+
+
+#### User-facing
+- Implemented a bare-bones version of streda.py with all its core structure but without the integration algorithms

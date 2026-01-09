@@ -34,7 +34,7 @@ def _glued_and_core(pre, *, z=None, out_of_range="zero"):
 
 def _default_hint() -> np.ndarray:
     # Simple diagonal interface potential (Hermitian, basis-covariant)
-    return 0.2 * np.eye(3, dtype=np.complex128)
+    return np.float64(0.2) * np.eye(3, dtype=np.complex128)
 
 
 def test_orbitronic_gluing_shapes_and_finiteness(
