@@ -41,7 +41,15 @@ Hence, “0.x” is read as “still evolving”.
 From here on, breaking changes should bump MAJOR.
 
 ## Unreleased
-(empty)
+#### Breaking
+- Deleted functional_trace.py and integrated it as a helper in streda.py
+
+
+#### User-facing
+- Implemented a bare-bones version of streda.py with all its core structure but without the integration algorithms
+
+#### Internal
+- ...
 
 ## Logbook
 
