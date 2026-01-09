@@ -269,14 +269,23 @@ class OrbitronicInterface:
     @classmethod
     def from_params(
         cls,
-        m_int: float,
-        gamma_int: float,
-        alpha: float,
-        beta: float,
-        delta_CF: float,
-        L0: float,
+        params: OrbitronicInterfaceParams,
         basis: Optional[ArrayC] = None,
     ) -> "OrbitronicInterface":
+        """
+        Generates OrbitronicInterface object from parameters given as OrbitronicInterfaceParams object 
+        using the canonical L matrices.
+        """
+        # Extract and validate params
+        m_int = params.m_int
+        if m_int <= 0:
+            raise ValueError("m_int must be positive.")
+        gamma_int= params.gamma_int
+        alpha = params.alpha
+        beta = params.beta
+        delta_CF = params.delta_CF
+        L0 = params.L0
+
         L = canonical_L_matrices(basis)
         return cls(
             m_int=m_int,
