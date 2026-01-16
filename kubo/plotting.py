@@ -113,6 +113,9 @@ def plot_complex_components(
     title: str,
     xlabel: str,
     ylabel: str,
+    additional_markers: bool = False,
+    marker_size: int = 3,
+    marker_every: int = 1,
 ):
     plt = _import_plt()
     fig, ax = plt.subplots()
@@ -123,6 +126,11 @@ def plot_complex_components(
     ax.set_ylabel(ylabel)
     ax.legend()
     fig.tight_layout()
+    if additional_markers == True:
+        for ln in ax.lines:
+            ln.set_marker(".")
+            ln.set_markersize(marker_size)
+            ln.set_markevery(marker_every)   # every point; increase if too dense (e.g. 5, 10)
     return fig, ax
 
 def show():

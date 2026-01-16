@@ -50,6 +50,10 @@ From here on, breaking changes should bump MAJOR.
 #### Internal
 - ...
 
+#### Issues/ Notes
+- To finely examine the continuity behaviour of the glued GF at the interface, I tried going up to Nz=4001, but ran out of RAM.
+- 
+
 ## Logbook
 
 ### 0.1.0 (2025-12-29)

@@ -1,9 +1,102 @@
 '''
-Docstring for scripts.plot_interfacial_greens to be filled in later.
-
-Visualisation of the fully glued interfacial Green's function in real space,
+Plotting script to visualize the fully glued interfacial Green's function in real space,
 using FFT-based kernels, which should align on both bulk sides.
+
+This script is a diagnostic plotting utility analogous to
+`scripts.plot_bulk_greens`, but for the full bilayer/interface system
+constructed via a real-space gluing formula.
+
+What it computes
+----------------
+Given a gluing preset (see `kubo/presets.py`, `GLUING_PRESETS`) and input parameters, the script:
+
+1) Builds model-specific gluing ingredients using the registry:
+   - left/right bulk Hamiltonians H_L(kx,ky,kz), H_R(kx,ky,kz)
+   - effective masses m_L, m_R used in the gluing boundary condition
+   - interface Hamiltonian H_int(kx,ky) treated as a 3D potential V_int(kx,ky,kz)
+     (kz is ignored by construction)
+
+2) Computes auxiliary bulk real-space kernels g_L(Δz), g_R(Δz) using an FFT-based
+   kz grid (see `kubo.greens.realspace_kernel_retarded_with_meta`).
+
+3) Precomputes gluing objects (interface matrix G00 and kernel factors).
+
+4) Evaluates the glued retarded Green's function:
+      G^R_glued(z, z')
+   on the absolute z-grid provided by the FFT box.
+
+What it plots
+--------------
+This script fixes a single point z' on the *left* side of the interface (z'<0)
+and plots the glued GF as a function of z:
+
+- Re/Im parts of one or two selected matrix elements:
+    G^R_glued(z, z')_{i1,j1} and optionally {i2,j2}
+- Frobenius norm over the internal matrix at fixed z':
+    ||G^R_glued(z, z')||_F
+- "Selected-channel" Frobenius norm over the chosen entries (treated as a 1x2 vector):
+    sqrt(|G_{i1,j1}|^2 + |G_{i2,j2}|^2)
+
+Coordinate conventions
+----------------------
+- z and z' are *absolute* coordinates on the centered FFT box grid.
+- Δz = z - z' is computed internally for diagnostics/printing, but the x-axis
+  of the current plots is the absolute z (restricted to the right side).
+        
+Important arguments
+-------------------
+--preset
+    Selects a gluing development preset from GLUING_PRESETS.
+
+--zp
+    Desired absolute z' on the left (must be < 0). The script snaps to the nearest
+    available grid point with z'<0. If omitted, chooses the left grid point closest to 0.
+
+--z-max
+    Optional absolute cutoff for the plotted z values (0<|z|<=z_max).
+
+--ij1 / --ij2
+    Matrix indices (i, j) of entries to plot.
+
+--all-z
+    If set, plots for all z on both sides of the interface.
+    By default, only right side (z>0) is plotted, since gluing is most relevant
+    for cross-interface transport.
+
+
+Common usage
+------------
+List available options:
+    python -m scripts.plot_interfacial_greens -h
+
+Run with a preset:
+    python -m scripts.plot_interfacial_greens --preset toy_gluing_standard
+    python -m scripts.plot_interfacial_greens --preset orbitronic_gluing_standard
+
+Override evaluation point and channels:
+    python -m scripts.plot_interfacial_greens \\
+      --preset toy_gluing_standard --omega 0.0 --kx 0.2 --ky 0.0 --eta 0.05 \\
+      --ij1 0 0 --ij2 1 1
+
+Fix z' on the left and limit right-side range:
+    python -m scripts.plot_interfacial_greens \\
+      --preset toy_gluing_standard --zp -10.0 --z-max 60.0 --downsample 2
+
+Fix z' on the left and plot all z:
+    python -m scripts.plot_interfacial_greens \\
+        --preset orbitronic_gluing_standard --zp -50.0 --all-z
+
+
+Notes
+-----
+- This script computes a *retarded* glued GF. If you later want an advanced GF
+  for comparison, the typical dev approach is to flip the sign of eta and reuse
+  the same retarded construction, then compare via conjugation symmetry.
+- For strict reproducibility of interface physics, gluing presets should explicitly
+  specify bulk_left_params, bulk_right_params, and interface_params if the registry
+  is configured with no-defaults behavior.
 '''
+
 from __future__ import annotations
 
 import argparse
@@ -59,13 +152,29 @@ def parse_args() -> argparse.Namespace:
              "If omitted, uses the grid point closest to 0 from the left.",
     )
 
-    # Limit right-side z-range (absolute coordinate)
+    # Choose to include all z on both sides
+    p.add_argument(
+        "--all-z", 
+        action="store_true", # default False
+        help="If set, plot for all z on both sides."
+             "By default, only right side (z>0) is plotted, "
+             "since gluing is most relevant for cross-interface transport."
+    )
+
+    # Limit z-range (absolute coordinate, not Δz)
     p.add_argument(
         "--z-max",
         type=float,
         default=None,
-        help="If set, only plot z on the right side with 0<z<=z_max (absolute).",
+        help="If set, only plot for z with |z|<=z_max.",
     )
+    p.add_argument(
+        "--z-min",
+        type=float,
+        default=None,
+        help="If set, only plot z with z>=z_min.",
+    )
+
 
     # Visual clarity options
     p.add_argument("--downsample", type=int, default=1, help="Downsample factor for line plots (>=1).")
@@ -197,26 +306,35 @@ def main() -> None:
         m_R=m_R,
     )
 
-    # z, z' here are ABSOLUTE grids.
-    z_abs = pre.z_abs
-    zp_abs = pre.z_abs  # same by convention in your gluing precompute
+    # z-grid (absolute coordinates, i.e. centered FFT box not Δz)
+    z_abs = pre.z_abs # (Nz,) array
 
-    # Build the right-side z-list we actually want to evaluate (absolute z > 0)
-    z_right = z_abs[z_abs > 0.0]
+    # Build the z-list 
+    ## Only right side (z_max > z > 0) by default, unless --all-z or z_min<0 is set
+    if args.z_min is not None:
+        z_eval = z_abs[z_abs >= float(args.z_min)]
+    elif args.all_z: 
+        z_eval = z_abs
+    else: 
+        z_right = z_abs[z_abs > 0.0]
+        z_eval = z_right
     if args.z_max is not None:
-        z_right = z_right[z_right <= float(args.z_max)]
-    if z_right.size == 0:
-        raise ValueError("No right-side z points selected (need some z>0). Check your grid or --z-max.")
-    
+        z_eval = z_eval[z_eval <= float(args.z_max)]
+    if z_eval.size == 0:
+        raise ValueError("No z points selected after applying --z-min/--z-max and --all-z/right-side filtering.")
+
+
     # -----------------------------------------------------------
     # Gluing
     # -----------------------------------------------------------
     # Evaluate glued GF only for right-side z, but for all z' on the absolute grid
-    z_out, zp_out, G_glued = glued_retarded_greens_batched(pre=pre, z=z_right)
+    z_out, zp_out, G_glued = glued_retarded_greens_batched(pre=pre, z=z_eval)
     # Shapes:
     #   z_out: (Nz_right,)
     #   zp_out: (Nz_full,)
     #   G_glued: (Nz_right, Nz_full, n, n)
+    if not np.array_equal(z_out, z_eval):
+        raise RuntimeError("Internal error: z_out does not match input z_eval.")
 
     # -----------------------------------------------------------
     # Gather selected channels and prepare for plotting
@@ -272,6 +390,7 @@ def main() -> None:
         title=f"G^R_glued(z, z'={zp_fixed:.6g}) channel ({i1},{j1})  [x-axis: absolute z on right]",
         xlabel="z (absolute, right side)",
         ylabel="G",
+        additional_markers=True,
     )
 
     if (i1, j1) != (i2, j2):

@@ -248,23 +248,47 @@ ORBITRONIC_GLUING_STANDARD = DevGluingPreset(
     note="Standard orbitronic gluing preset with moderate box and defaults allowed.",
 )
 
+ORBITRONIC_GLUING_AROUND_ZERO = DevGluingPreset(
+    name="orbitronic_gluing_around_zero",
+    model=ModelConfig(name="orbitronic"), # no params yields defaults in the registry
+    plot_channels=((0, 0), (2, 2)),
+    grid=GridConfig(
+        nomega=1,
+        nz=1025,
+        nk_parallel=1,
+        nphi=1,
+        k_max=5.0,
+        z_max=55.0,
+        omega_max=1.0,
+    ),  
+    physics=PhysicsConfig(eta=0.1, mu=0.0, temperature=0.0),
+    omega=0.0,  
+    kx=0.0,
+    ky=0.0,
+    no_defaults=False,
+    note="Fine orbitronic gluing preset with moderate box and defaults allowed continuity observations.",
+)
+
 # Collect everything
 ORBITRONIC_PRESETS_bulk = _make_presets_for_bulk(
     ORBITRONIC_FFT_MID,
 )
-ORBITRONIC_PRESET_gluing = _make_presets_for_gluing(
-    ORBITRONIC_GLUING_STANDARD, )
+ORBITRONIC_PRESETS_gluing = _make_presets_for_gluing(
+    ORBITRONIC_GLUING_STANDARD, ORBITRONIC_GLUING_AROUND_ZERO)
 
-ORBITRONIC_PRESETS: dict[str, object] = {**ORBITRONIC_PRESETS_bulk, **ORBITRONIC_PRESET_gluing}
+ORBITRONIC_PRESETS: dict[str, object] = {**ORBITRONIC_PRESETS_bulk, **ORBITRONIC_PRESETS_gluing}
 
 # endregion
 # -------------------------------------------------------------
 
+
+# region Collections of all presets
 BULK_PRESETS: dict[str, DevBulkPreset] = {**TOY_PRESETS_bulk, **ORBITRONIC_PRESETS_bulk}
 TOY_BULK_PRESET_NAMES = tuple(TOY_PRESETS_bulk.keys())
 ORBITRONIC_BULK_PRESET_NAMES = tuple(ORBITRONIC_PRESETS_bulk.keys())
 
-GLUING_PRESETS: dict[str, DevGluingPreset] = {**TOY_PRESETS_gluing, **ORBITRONIC_PRESET_gluing}
+GLUING_PRESETS: dict[str, DevGluingPreset] = {**TOY_PRESETS_gluing, **ORBITRONIC_PRESETS_gluing}
 TOY_GLUING_PRESET_NAMES = tuple(TOY_PRESETS_gluing.keys())
-ORBITRONIC_GLUING_PRESET_NAMES = tuple(ORBITRONIC_PRESET_gluing.keys())
+ORBITRONIC_GLUING_PRESET_NAMES = tuple(ORBITRONIC_PRESETS_gluing.keys())
 
+# endregion
