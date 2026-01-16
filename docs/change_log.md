@@ -23,6 +23,9 @@ Paste this in `## Unreleased` for a new day.
 
 #### Internal
 - ...
+
+#### Issues/ Notes
+- ...
 -->
 and then, when ready for release, move it to the top of the log, f.ex. in  `### 0.2.0 (2025-12-29)`
 ### Naming convention
@@ -42,7 +45,7 @@ From here on, breaking changes should bump MAJOR.
 
 ## Unreleased
 #### Breaking
-- Renamed plot_fft_decay_toy.py to DEPRplot_fft_decay_toy.py to indicate it is no longer needed since model-agnostic plot_bulk_greens.py was implemented; Not yet ready to delete it though.
+- ...
 
 #### User-facing
 - ...
@@ -51,8 +54,7 @@ From here on, breaking changes should bump MAJOR.
 - ...
 
 #### Issues/ Notes
-- To finely examine the continuity behaviour of the glued GF at the interface, I tried going up to Nz=4001, but ran out of RAM.
-- 
+- ...
 
 ## Logbook
 
@@ -88,3 +90,19 @@ From here on, breaking changes should bump MAJOR.
 
 #### User-facing
 - Implemented a bare-bones version of streda.py with all its core structure but without the integration algorithms
+
+### 0.2.1 (2026-01-16)
+#### Breaking
+- Renamed plot_fft_decay_toy.py to DEPRplot_fft_decay_toy.py to indicate it is no longer needed since model-agnostic plot_bulk_greens.py was implemented; Not yet ready to delete it though.
+- Changed OrbitronicInterface.from_params in orbitronic.py to accept params dataclass and match the design on the bulk.
+- test_orbitronic no longer passes in its entirety due to the change in orbitronic.py. 
+- Presets are now separated into bulk and gluing presets.
+
+#### User-facing
+- Added a new public method in registry.py meant for gluing two bulk Hamiltonians with an interface Hamiltonian, and adjusted config.py along the way.
+- Added script to plot interfacial Green's functions for either models from the registry.
+- Added optional arguments to plot_complex_components function in plotting.py for additional markers
+- Added another gluing preset for closer inspection around zero: name="orbitronic_gluing_around_zero"
+
+#### Issues/ Notes
+- To finely examine the continuity behaviour of the glued GF at the interface, I tried going up to Nz=4001, but ran out of RAM.
