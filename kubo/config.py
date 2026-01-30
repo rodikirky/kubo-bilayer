@@ -6,11 +6,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal, Callable, Any, Optional
 from .models.toy import ToyBulkParams, ToyInterfaceParams
+from .models.toy_single import SingleBulkParams, SingleInterfaceParams
 from .models.orbitronic import OrbitronicBulkParams, OrbitronicInterfaceParams
 import numpy as np
 
 
-ModelName = Literal["toy", "orbitronic", "user_defined"]
+ModelName = Literal["toy", "toy_single", "orbitronic", "user_defined"]
 HamiltonianFunction = Callable[[float, float, float], np.ndarray]
 
 
@@ -30,12 +31,12 @@ class GridConfig:
 class ModelConfig:
     """
     Model selection + model-specific parameters.
-    Defaults to toy model.
+    Defaults to the effectively single channel decoupled toy model.
 
     bulk_left_params / bulk_right_params / interface_params are expected to be instances of
     model-specific dataclasses, e.g. ToyBulkParams, OrbitronicBulkParams, etc.
     """
-    name: ModelName = "toy"
+    name: ModelName = "toy_single"
 
     bulk_left_params: Optional[Any] = None
     bulk_right_params: Optional[Any] = None
@@ -55,13 +56,23 @@ class ModelConfig:
             return x is None or isinstance(x, cls)
 
         if self.name == "toy":
-            # Allow None so presets can omit params and your factory fills defaults.
+            # Allow None so presets can omit params and factory fills defaults.
             if not _is_none_or_instance(self.bulk_left_params, ToyBulkParams):
                 raise TypeError(f"toy: bulk_left_params must be ToyBulkParams or None, got {type(self.bulk_left_params)}")
             if not _is_none_or_instance(self.bulk_right_params, ToyBulkParams):
                 raise TypeError(f"toy: bulk_right_params must be ToyBulkParams or None, got {type(self.bulk_right_params)}")
             if not _is_none_or_instance(self.interface_params, ToyInterfaceParams):
                 raise TypeError(f"toy: interface_params must be ToyInterfaceParams or None, got {type(self.interface_params)}")
+            return
+        
+        if self.name == "toy_single":
+            # Allow None so presets can omit params and factory fills defaults.
+            if not _is_none_or_instance(self.bulk_left_params, SingleBulkParams):
+                raise TypeError(f"toy: bulk_left_params must be SingleBulkParams or None, got {type(self.bulk_left_params)}")
+            if not _is_none_or_instance(self.bulk_right_params, SingleBulkParams):
+                raise TypeError(f"toy: bulk_right_params must be SingleBulkParams or None, got {type(self.bulk_right_params)}")
+            if not _is_none_or_instance(self.interface_params, SingleInterfaceParams):
+                raise TypeError(f"toy: interface_params must be SingleInterfaceParams or None, got {type(self.interface_params)}")
             return
 
         if self.name == "orbitronic":
