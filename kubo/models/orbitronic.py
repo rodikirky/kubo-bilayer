@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Tuple, Sequence, Optional, Literal, Union
+from typing import Tuple, Sequence, Optional, Literal, Union, Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -167,6 +167,11 @@ class OrbitronicBulk:
         For H(k) = k^2/(2m) I + gamma (k·L)^2 + J (M·L),
 
             ∂H/∂k_j = (k_j / m) I + gamma (L_j (k·L) + (k·L) L_j).
+
+        Note:
+        Beware that this identity does not hold when translation invariance is broken,
+        e.g. in the presence of impurities or interfaces.
+        In such cases, the k-operators need to be carefully defined!
         """
         k_vec = _as_real3(k).astype(float)
         kx, ky, kz = k_vec
@@ -208,6 +213,11 @@ class OrbitronicBulk:
             Which component of orbital angular momentum is transported (α).
         hbar : float, optional
             Planck constant; use 1.0 for natural units.
+
+        Note:
+        Beware that this identity does not hold when translation invariance is broken,
+        e.g. in the presence of impurities or interfaces.
+        In such cases, the k-operators need to be carefully defined!
         """
         if L_comp not in ("x", "y", "z"):
             raise ValueError(f"L_comp must be 'x', 'y', or 'z'. Got {L_comp}.")
@@ -326,7 +336,127 @@ class OrbitronicInterface:
         H_int = self.L0 * (kinetic + V_tex + V_OR + CF_term)
         return H_int
 #endregion
+# ----------------------------------------------------------------------
 
-#region Observables
+# ----------------------------------------------------------------------
+#region Observable & perturbation operators
+# in real space, not k-space
+# ----------------------------------------------------------------------
+'''
+def orbital_density_operator(
+        system: OrbitronicBulk,
+        component: Literal["x", "y", "z"],
+        ) -> ArrayC:
+    comp_index = {"x": 0, "y": 1, "z": 2}[component]
+    L_operator = system.L[comp_index]
+    return L_operator
+
+def velocity_operator(
+        system: OrbitronicBulk,
+        flow_dir: Literal["x", "y", "z"],
+        hbar: float = 1.0,
+
+) -> Callable:
+    """
+    The formula for the velocity operator is 
+    v_i(k) = (1/ħ) ∂H/∂k_i for i = x, y, z.
+    
+    In real space, the k-operators become derivatives.
+    """
+    flow_index = {"x": 0, "y": 1, "z": 2}[flow_dir]
+    L = system.L # (3,3,3,)
+
+    # Derivative functions in real space
+    def deriv_func_x(
+            operating_on: Callable, 
+            evaluate_at: NDArray[np.float64],
+            ) -> ArrayC:
+        x, y, z = evaluate_at
+        # kx -> -i ∂/∂x (maybe separate two-sided derivative)
+        # placeholder for derivative operation
+        return operating_on(evaluate_at) * 1j # not yet differentiated
+    
+    def deriv_func_y(
+            operating_on: Callable, 
+            evaluate_at: NDArray[np.float64],
+            ) -> ArrayC:
+        x, y, z = evaluate_at
+        # ky -> -i ∂/∂y
+        # placeholder for derivative operation
+        return operating_on(evaluate_at) * 1j # not yet differentiated
+    
+    def deriv_func_z(
+            operating_on: Callable, 
+            evaluate_at: NDArray[np.float64],
+            ) -> ArrayC:
+        x, y, z = evaluate_at
+        # kz -> -i ∂/∂z
+        # placeholder for derivative operation
+        return operating_on(evaluate_at) * 1j # not yet differentiated
+    
+    deriv_funcs = (deriv_func_x, deriv_func_y, deriv_func_z)
+
+    def k_vector_realspace(
+            operating_on: Callable, 
+            evaluate_at: NDArray[np.float64],
+            ) -> ArrayC:
+        dx, dy, dz = deriv_funcs
+        result = [dx(operating_on,evaluate_at),dy(operating_on,evaluate_at),dz(operating_on,evaluate_at)]
+        result_vec = np.array(result, dtype=np.complex128)
+        return result_vec
+
+    # k·L becomes a product of derivative function in real space
+    def kL_operator(
+            operating_on: Callable, 
+            evaluate_at: NDArray[np.float64],
+            k_vec_operator: Callable | None = None, # enables custom choice
+            ) -> ArrayC:
+        
+        if k_vec_operator is None:
+            k_operation_result = k_vector_realspace(operating_on,evaluate_at)
+        else: 
+            k_operation_result = k_vec_operator(operating_on,evaluate_at)
+
+        kL_result = np.zeros(L[0].shape)
+        for i in range(3):
+            term_i = L[i] @ k_operation_result[i]
+            kL_result += term_i
+        kL_result = np.array(kL_result, dtype=np.complex128)
+        return kL_result
+    
+    # Piece together the velocity component
+    def velocity(
+            operating_on: Callable,
+            evaluate_at: NDArray[np.float64],
+            k_vec_operator: Callable | None = None, # enables custom choice
+            ) -> ArrayC:
+        if k_vec_operator is None:
+            derivative_in_flow_dir = k_vector_realspace(operating_on,evaluate_at)[flow_index]
+        else: 
+            derivative_in_flow_dir = k_vec_operator(operating_on,evaluate_at)[flow_index]
+        kL = kL_operator(operating_on,evaluate_at,k_vec_operator=k_vec_operator)
+        L_dir = L[flow_index]
+
+        # (Li @ kL + kL @ Li) component
+        Li_kL = L_dir @ kL
+        helper_operating_on = lambda point: L_dir @ operating_on(point)
+        kL_L =  
+        dH_flow_dir = derivative_in_flow_dir/system.mass + system.gamma *  + 
+
+    dH_dkx = (kx / system.mass) * I + system.gamma * (Lx @ kL + kL @ Lx)
+    dH_dky = (ky / system.mass) * I + system.gamma * (Ly @ kL + kL @ Ly)
+    dH_dkz = (kz / system.mass) * I + system.gamma * (Lz @ kL + kL @ Lz)
+
+    v_x = dH_dkx / hbar
+    v_y = dH_dky / hbar
+    v_z = dH_dkz / hbar
+
+def orbital_current_density_operator(
+        system: OrbitronicBulk,
+        flow_dir: Literal["x", "y", "z"],
+        L_comp: Literal["x", "y", "z"],
+):
+    pass
+'''
 
 #endregion
