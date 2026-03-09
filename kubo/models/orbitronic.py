@@ -157,6 +157,70 @@ class OrbitronicBulk:
         V = self.potential(k)
         return kinetic + V
     
+    def greens_retarded(self, omega: float, eta: float, k: Union[Sequence[float],NDArray[np.float64]]):
+        h_k = self.hamiltonian(k)
+        mat = (omega + 1j * eta) * self.identity - h_k
+        # TODO: Install linalg error safeguard here and in greens.py
+        return np.linalg.solve(mat, self.identity) # More stable than direct inversion
+
+    def hamiltonian_kz_poly_coeffs(self, kx: float, ky: float) -> tuple[ArrayC, ArrayC, ArrayC]:
+        """
+        Return (H0, H1, H2) such that for any (possibly complex) kz:
+            H(kz) = H0 + kz*H1 + kz**2 * H2
+        with kx,ky held fixed.
+
+        Useful for root computation.
+        """
+        kx = float(kx)
+        ky = float(ky)
+
+        Lx, Ly, Lz = self.L
+        I = self.identity
+
+        # A_parallel = kx*Lx + ky*Ly
+        A_par = kx * Lx + ky * Ly
+
+        # Exchange term J (M·L) is kz-independent
+        M = self.magnetisation
+        ML = M[0] * Lx + M[1] * Ly + M[2] * Lz
+
+        # Build coefficients
+        H2 = (1.0 / (2.0 * self.mass)) * I + self.gamma * (Lz @ Lz)
+        H1 = self.gamma * (A_par @ Lz + Lz @ A_par)
+        H0 = ((kx * kx + ky * ky) / (2.0 * self.mass)) * I + self.gamma * (A_par @ A_par) + self.J * ML
+
+        return H0, H1, H2
+
+    def hamiltonian_from_kz_poly(self, kz: complex, H0: ArrayC, H1: ArrayC, H2: ArrayC) -> ArrayC:
+        """Evaluate H(kz) from precomputed coefficients using Horner's rule."""
+        kz = np.complex128(kz)
+        return (H2 * kz + H1) * kz + H0  # H0 + kz*H1 + kz^2*H2
+
+    def dH_dkz_from_kz_poly(self, kz: complex, H1: ArrayC, H2: ArrayC) -> ArrayC:
+        """
+        Evaluate ∂H/∂kz = H1 + 2*kz*H2 from coefficients.
+        Needed for the residue theorem.
+        """
+        kz = np.complex128(kz)
+        return H1 + (2.0 * kz) * H2
+
+    def M_and_Mprime_from_kz_poly(
+        self, kz: complex, omega: float, eta: float, H0: ArrayC, H1: ArrayC, H2: ArrayC
+    ) -> tuple[ArrayC, ArrayC]:
+        """
+        Convenient for residue theorem. M is the inverse of the k-space retarded Green's function.
+        
+        Returns M(kz) and M'(kz) where
+            M(kz) = (omega+i*eta)I - H(kz) 
+            M'(kz) = dM/dkz = - dH/dkz
+        """
+        I = self.identity
+        Hk = self.hamiltonian_from_kz_poly(kz, H0, H1, H2)
+        dH = self.dH_dkz_from_kz_poly(kz, H1, H2)
+        M = (omega + 1j * eta) * I - Hk
+        Mp = -dH
+        return M, Mp
+    
     def velocity_components(self, k: Union[Sequence[float],NDArray[np.float64]], hbar: float = 1.0
                             ) -> tuple[ArrayC, ArrayC, ArrayC]:
         """
