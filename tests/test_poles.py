@@ -1,8 +1,10 @@
 from typing import Tuple
 import numpy as np
 from numpy.typing import NDArray
-from setup.hamiltonians import BulkHamiltonian
+from showcases.toy_trivial import make_scalar_hamiltonian
 from kubo_bilayer.numerics.poles import ArrayC, build_companion_matrices
+
+hamiltonian = make_scalar_hamiltonian()
 
 def test_companion_shape():
     # for an n×n Hamiltonian, L and M should be 2n×2n
