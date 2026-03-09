@@ -296,7 +296,7 @@ class BulkHamiltonian:
             dtype=np.complex128,
         )
         H1 = np.array(B[2] + C[1] * ky + C[2] * kx, dtype=np.complex128)
-        H2 = np.array(A[2], dtype=np.complex128)
+        H2 = np.array(0.5*A[2], dtype=np.complex128)
 
         return H0, H1, H2
 
