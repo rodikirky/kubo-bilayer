@@ -1,7 +1,39 @@
+# virtual environment
+.venv/
+
+# Python bytecode
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# build and packaging
+*.egg-info/
+dist/
+build/
+
+# editor and OS clutter
 .vscode/
 .idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# numerical outputs
+results/
+*.npy
+*.npz
+
+# jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+
 .env
 *.log
 .kubobilayervenv/

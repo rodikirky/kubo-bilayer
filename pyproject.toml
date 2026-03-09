@@ -1,37 +1,36 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kubo_bilayer"
+name = "kubo-bilayer"
 version = "0.1.0"
-description = "Numerical Kubo observable computation (Green's functions, Streda terms, etc.) for a interfacial bilayer system"
+description = "Numerical Kubo observable computation (Green's functions, Streda terms, etc.) for an interfacial bilayer system"
 authors = [
     { name = "Leona Rodenkirchen" }
 ]
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "numpy",
-    "scipy",
-    "numba"
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "numba>=0.57",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
+    "pytest>=7.0",
     "pytest-cov",
     "mypy",
     "ruff",
 ]
-
 plot = [
-  "matplotlib>=3.8",
+    "matplotlib>=3.8",
 ]
 
-
-[tool.setuptools]
-packages = ["kubo"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["kubo_bilayer*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
