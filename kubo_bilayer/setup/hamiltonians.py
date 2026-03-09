@@ -1,3 +1,114 @@
+
+"""
+hamiltonians.py
+---------------
+Dataclasses for the coefficient matrices and Hamiltonian functions
+of a planar interface bilayer system, in which each bulk side and
+the interface itself are described by polynomial functions of the
+crystal momentum k.
+
+Physical Setting
+----------------
+Consider a bilayer system with a planar interface at z = 0. On each
+side of the interface, translation invariance is maintained and the
+Hamiltonian is a quadratic polynomial in the momentum k. The two bulk
+sides are described by BulkHamiltonian instances, and the interface
+itself is described by an InterfaceHamiltonian instance, which is a
+quadratic polynomial in the in-plane momenta kx and ky only, since
+the interface has no extent in z.
+
+Structure
+---------
+Each Hamiltonian type is represented by two dataclasses:
+
+    XCoeffs       — a flat, frozen container of named coefficient
+                    matrices, with Hermiticity and shape validation
+                    in __post_init__. This is the user-facing input
+                    layer, designed to be constructed directly from
+                    physical parameters.
+
+    XHamiltonian  — a structured, frozen dataclass that groups the
+                    coefficients into tuples by polynomial order and
+                    exposes mathematical methods. Constructed from
+                    XCoeffs via the from_coeffs() classmethod.
+
+The separation between Coeffs and Hamiltonian reflects the separation
+between physical input and mathematical structure: XCoeffs is where
+parameters are specified and validated, XHamiltonian is where
+computations are performed.
+
+Bulk Hamiltonian
+----------------
+BulkCoeffs / BulkHamiltonian represent a quadratic polynomial in
+(kx, ky, kz):
+
+    H(k) = 1/2 kx² Ax + 1/2 ky² Ay + 1/2 kz² Az
+          + kx Bx + ky By + kz Bz
+          + kx ky Cxy + ky kz Cyz + kz kx Czx
+          + D
+
+Key methods on BulkHamiltonian:
+    evaluate(kx, ky, kz)
+        Returns the nxn Hamiltonian matrix at a given k-point.
+
+    hamiltonian_kz_polynomial(kx, ky)
+        At fixed (kx, ky), returns coefficient matrices H0, H1, H2
+        such that H(kz) = H0 + H1 kz + H2 kz², where H0 does not
+        include the ω shift. This is the direct input to the companion
+        linearization in poles.py.
+
+    velocity_kz_polynomial(direction, kx, ky)
+        At fixed (kx, ky), returns W_i and V_i such that the velocity
+        in direction i satisfies v_i(kz) = W_i + V_i kz. Used in the
+        construction of observable current densities and perturbation
+        operators in operators.py.
+
+Interface Hamiltonian
+---------------------
+InterfaceCoeffs / InterfaceHamiltonian represent a quadratic
+polynomial in the in-plane momenta (kx, ky) only:
+
+    H_int(k∥) = 1/2 kx² Ax + 1/2 ky² Ay
+               + kx Bx + ky By
+               + kx ky Cxy
+               + D
+
+The absence of kz-dependent terms reflects the physical fact that
+the interface has no extent in the z direction. InterfaceHamiltonian
+is structurally a strict 2D subset of BulkHamiltonian.
+
+Key methods on InterfaceHamiltonian:
+    evaluate(kx, ky)
+        Returns the nxn interface Hamiltonian matrix at a given
+        in-plane k-point. This is consumed by greens/interface.py
+        in the construction of the coincidence value G(0,0).
+
+Validation
+----------
+All coefficient matrices are validated at construction time in
+XCoeffs.__post_init__():
+    - All matrices must be square.
+    - All matrices must share the same shape.
+    - All matrices must be Hermitian: M = M†.
+
+These checks catch the most common input errors before any numerical
+computation is attempted.
+
+Notes
+-----
+- The ω shift (G̃^r(kz) = (H(kz) - ω·I)⁻¹) is deliberately excluded
+  from all Hamiltonian methods. It is introduced exclusively in
+  poles.py, maintaining a clean separation between the description
+  of the physical system and the Green's function computation.
+- All coefficient matrices are stored and computed as np.complex128
+  arrays. Scalar function arguments (kx, ky, kz, omega) are typed as
+  complex, following Python's numeric tower convention.
+
+Dependencies
+------------
+    poles.py       — consumes hamiltonian_kz_polynomial()
+    operators.py   — consumes velocity_kz_polynomial()
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,7 +121,7 @@ ArrayC = NDArray[np.complex128]
 
 
 # ---------------------------------------------------------------------------
-# Coefficient containers
+# region Coefficient containers
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
@@ -96,9 +207,10 @@ class InterfaceCoeffs:
             if not np.allclose(mat, mat.conj().T):
                 raise ValueError(f"{name} is not Hermitian.")
 
+# endregion
 
 # ---------------------------------------------------------------------------
-# Hamiltonian classes
+# region Hamiltonian classes
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
@@ -155,8 +267,8 @@ class BulkHamiltonian:
 
     def hamiltonian_kz_polynomial(
         self,
-        kx: complex,
-        ky: complex,
+        kx: float,
+        ky: float,
     ) -> Tuple[ArrayC, ArrayC, ArrayC]:
         """
         At fixed (kx, ky), return the H0, H1 and H2 matrices such that
@@ -164,7 +276,7 @@ class BulkHamiltonian:
 
         Parameters
         ----------
-        kx, ky    : in-plane momenta
+        kx, ky    : in-plane momenta, real
 
         Returns
         -------
@@ -302,3 +414,5 @@ class InterfaceHamiltonian:
             + kx * ky * self.mixed_coeff
             + self.constant
         )
+
+    # endregion
