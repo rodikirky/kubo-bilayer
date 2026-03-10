@@ -39,10 +39,17 @@ kubo_bilayer/
 ├── numerics/         # Pole computation via companion linearization
 │                     # and residue construction via SVD
 │
-├── analytics/        # Analytical expressions for the interfacial
-│                     # Green's function and response terms I–Vb
+├── greens/           # Analytical expressions for the interfacial
+│                     # Green's function with poles and residues
 │
+├── fermi_surface/    # performs zp-integration analytically
+│                     
+│ 
+├── fermi_sea/        # performs zp-integration analytically
+│                     # sets up omega' integration
+│ 
 ├── integrals/        # k∥ grid, quadrature, and parallelization
+│                     # omega integration as a matsubara sum
 │                     # returns σ_A(z)
 │
 ├── config.py         # Loads and validates config.yaml → Config dataclass

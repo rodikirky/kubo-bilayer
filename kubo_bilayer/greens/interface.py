@@ -117,7 +117,6 @@ import numpy as np
 from numpy.typing import NDArray
 
 from kubo_bilayer.setup.hamiltonians import BulkHamiltonian
-from kubo_bilayer.analytics.bulk import *
 
 ArrayC = NDArray[np.complex128]
 

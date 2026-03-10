@@ -4,7 +4,7 @@ from numpy.typing import NDArray
 import pytest
 from kubo_bilayer.numerics.poles import compute_poles
 from kubo_bilayer.numerics.residues import compute_residues
-from kubo_bilayer.analytics.bulk import *
+from kubo_bilayer.greens.bulk import *
 from conftest import ATOL_APPROX, ATOL_STRICT, ETA, OMEGA, OMEGA_DEGENERATE
 
 # -----------------------

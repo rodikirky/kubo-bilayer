@@ -54,13 +54,6 @@ bilayer.py
                     · G(0,0) · G_L(0)⁻¹
                     · Σ_αL e^(-i·kαL·z') ResαL
 
-zp_integral.py
-    Evaluates the z'-integral over terms I–Vb analytically,
-    yielding the spatially resolved Fermi-surface contribution
-    to the linear response:
-
-        σ_A(z) = ∫ d²k∥ / (64π³) · tr[...]
-
 Dependencies
 ------------
     kubo_bilayer.numerics.poles    — provides poles {kα}
