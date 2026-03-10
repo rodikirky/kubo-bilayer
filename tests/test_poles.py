@@ -104,6 +104,40 @@ def test_filter_correct_pole_location(scalar_hamiltonian, expected_upper_pole):
 
 # endregion
 
+
+#------------------------------------------------
+# region filter_lower_halfplane 
+#------------------------------------------------
+def test_compute_poles_rejects_invalid_halfplane(scalar_hamiltonian):
+    """Invalid halfplane argument should raise ValueError."""
+    with pytest.raises(ValueError):
+        compute_poles(
+            scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA,
+            tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX,
+            halfplane='sideways',
+        )
+
+def test_filter_lower_halfplane_scalar(scalar_hamiltonian, expected_lower_pole):
+    """Should return exactly one pole in the lower half-plane."""
+    L, M = build_companion_matrices(scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA)
+    kz_all = solve_companion_evp(L, M)
+    poles = filter_lower_halfplane(kz_all, tol=ATOL_STRICT)
+    assert len(poles) == 1
+    assert np.imag(poles[0]) < 0
+    assert np.isclose(poles[0], expected_lower_pole, atol=ATOL_STRICT)
+
+def test_compute_poles_lower_scalar(scalar_hamiltonian, expected_lower_pole):
+    """Full pipeline should return one lower half-plane pole."""
+    unique_poles, orders = compute_poles(
+        scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA,
+        tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX,
+        halfplane='lower',
+    )
+    assert len(unique_poles) == 1
+    assert orders[0] == 1
+    assert np.isclose(unique_poles[0], expected_lower_pole, atol=ATOL_STRICT)
+# endregion
+
 #------------------------------------------------
 # region cluster_poles 
 #------------------------------------------------
@@ -139,14 +173,14 @@ def test_cluster_known_degenerate_pole_location(degenerate_hamiltonian, expected
 #------------------------------------------------
 def test_compute_poles_scalar(scalar_hamiltonian, expected_upper_pole):
     """Full pipeline should return one pole matching the analytic result."""
-    unique_poles, orders = compute_poles(scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA, tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX)
+    unique_poles, orders = compute_poles(scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA, tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX,halfplane='upper')
     assert len(unique_poles) == 1
     assert orders[0] == 1
     assert np.isclose(unique_poles[0], expected_upper_pole, atol=ATOL_APPROX)
 
 def test_compute_poles_degenerate(degenerate_hamiltonian, expected_degenerate_pole):
     """Full pipeline should return one clustered pole of candidate order 2."""
-    unique_poles, orders = compute_poles(degenerate_hamiltonian, kx=0., ky=0., omega=OMEGA_DEGENERATE, eta=ETA, tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX)
+    unique_poles, orders = compute_poles(degenerate_hamiltonian, kx=0., ky=0., omega=OMEGA_DEGENERATE, eta=ETA, tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX,halfplane='upper')
     assert len(unique_poles) == 1
     assert orders[0] == 2
     assert np.isclose(unique_poles[0], expected_degenerate_pole, atol=ATOL_APPROX)

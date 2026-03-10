@@ -76,6 +76,11 @@
                     = [[i/√3]]
                     ≈ [[0.5774i]]
 
+    Retarded Green's function
+    -------------------------
+    G^r(Δz) = i · e^(i·kα·Δz) · (i/√3)
+            = -1/√3 · e^(i·kα·Δz)
+
     Phase Convention Note
     ---------------------
     The null vectors U0 and V0 returned by the SVD of P(kα) are only

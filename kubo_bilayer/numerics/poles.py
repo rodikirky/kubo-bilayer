@@ -81,6 +81,7 @@ __all__ = [
     "build_companion_matrices",
     "solve_companion_evp",
     "filter_upper_halfplane",
+    "filter_lower_halfplane",
     "cluster_poles",
     "compute_poles"
 ]
@@ -188,15 +189,46 @@ def filter_upper_halfplane(
     """
     real_axis = np.abs(np.imag(kz_all)) <= tol
     if np.any(real_axis):
-        import warnings
-        warnings.warn(
-            f"{np.sum(real_axis)} pole(s) found on the real axis. "
-            "These may require special treatment.",
-            RuntimeWarning,
+        raise ValueError(
+            f"{np.sum(real_axis)} pole(s) found on the real axis "
+            f"(|Im(kz)| <= {tol}). Contour integration is ill-defined. "
+            f"Try increasing eta or adjusting omega."
         )
-
     upper = np.imag(kz_all) > tol
     return kz_all[upper]
+
+def filter_lower_halfplane(
+    kz_all: ArrayC,
+    tol: float,
+) -> ArrayC:
+    """
+    Filter poles to keep only those in the lower half of the
+    complex kz-plane, i.e. Im(kz) < -tol.
+
+    These contribute to the left bulk Green's function G^r_L(z,0)
+    for z < 0.
+
+    Parameters
+    ----------
+    kz_all : ArrayC, shape (2n,)
+        All eigenvalues from solve_companion_evp()
+    tol : float
+        Threshold for Im(kz) < 0 selection
+
+    Returns
+    -------
+    poles : ArrayC, shape (m,)
+        Poles in the lower half-plane, m <= 2n
+    """
+    real_axis = np.abs(np.imag(kz_all)) <= tol
+    if np.any(real_axis):
+        raise ValueError(
+            f"{np.sum(real_axis)} pole(s) found on the real axis "
+            f"(|Im(kz)| <= {tol}). Contour integration is ill-defined. "
+            f"Try increasing eta or adjusting omega."
+        )
+    lower = np.imag(kz_all) < -tol
+    return kz_all[lower]
 
 def cluster_poles(
     poles: ArrayC,
@@ -262,6 +294,7 @@ def compute_poles(
     eta: float,
     tol_filter: float,
     tol_cluster: float,
+    halfplane: str,   # must be 'upper' or 'lower'
 ) -> Tuple[ArrayC, NDArray[np.intp]]:
     """
     Compute the poles of the retarded bulk Green's function
@@ -284,6 +317,10 @@ def compute_poles(
     eta          : float, broadening, must be strictly positive
     tol_filter   : float, threshold for upper half-plane filter
     tol_cluster  : float, threshold for pole clustering
+    halfplane : str
+        Which half-plane to filter poles into.
+        Must be 'upper' (right bulk Green's function, z > 0)
+        or 'lower' (left bulk Green's function, z < 0).
 
     Returns
     -------
@@ -293,7 +330,14 @@ def compute_poles(
         Cluster size for each unique pole. Values > 1 are
         candidate higher-order poles for residues.py to confirm.
     """
+    if halfplane not in ('upper', 'lower'):
+        raise ValueError(
+            f"halfplane must be 'upper' or 'lower', got '{halfplane}'."
+        )
     L, M = build_companion_matrices(hamiltonian, kx, ky, omega, eta)
     kz_all = solve_companion_evp(L, M)
-    poles = filter_upper_halfplane(kz_all, tol=tol_filter)
+    if halfplane == 'upper':
+        poles = filter_upper_halfplane(kz_all, tol=tol_filter)
+    else:
+        poles = filter_lower_halfplane(kz_all, tol=tol_filter)
     return cluster_poles(poles, tol=tol_cluster)

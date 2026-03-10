@@ -2,8 +2,6 @@ from typing import Tuple
 import numpy as np
 from numpy.typing import NDArray
 import pytest
-from showcases.toy_trivial import make_scalar_hamiltonian
-from showcases.toy_degenerate import make_degenerate_pole_hamiltonian
 from kubo_bilayer.numerics.poles import compute_poles
 from kubo_bilayer.numerics.residues import *
 from conftest import ATOL_APPROX, ATOL_STRICT, ETA, OMEGA, OMEGA_DEGENERATE
@@ -180,7 +178,7 @@ def test_residue_shape_degenerate(degenerate_hamiltonian, expected_degenerate_po
 def test_compute_residues_scalar(scalar_hamiltonian, expected_upper_pole):
     """Should return one residue with correct magnitude."""
     poles, orders = compute_poles(
-        scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA, tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX
+        scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA, tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX,halfplane='upper'
     )
     residues = compute_residues(
         scalar_hamiltonian, poles, orders,
@@ -193,7 +191,7 @@ def test_compute_residues_scalar(scalar_hamiltonian, expected_upper_pole):
 def test_compute_residues_degenerate(degenerate_hamiltonian):
     """Should return one residue of shape (2,2) for degenerate case."""
     poles, orders = compute_poles(
-        degenerate_hamiltonian, kx=0., ky=0., omega=OMEGA_DEGENERATE, eta=ETA, tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX
+        degenerate_hamiltonian, kx=0., ky=0., omega=OMEGA_DEGENERATE, eta=ETA, tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX,halfplane='upper'
     )
     residues = compute_residues(
         degenerate_hamiltonian, poles, orders,
