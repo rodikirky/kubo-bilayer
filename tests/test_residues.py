@@ -4,6 +4,7 @@ from numpy.typing import NDArray
 import pytest
 from showcases.toy_trivial import make_scalar_hamiltonian
 from showcases.toy_degenerate import make_degenerate_pole_hamiltonian
+from kubo_bilayer.numerics.poles import compute_poles
 from kubo_bilayer.numerics.residues import *
 from conftest import ATOL_APPROX, ATOL_STRICT, ETA, OMEGA, OMEGA_DEGENERATE
 
@@ -85,5 +86,120 @@ def test_null_vectors_consistent_scalar(scalar_hamiltonian, expected_upper_pole)
     )
     # the overlap should have magnitude 1 for a 1D nullspace
     assert np.isclose(np.abs(U0.conj().T @ V0), 1., atol=ATOL_APPROX)
+
+# endregion
+
+#------------------------------------------------
+# region compute_S_matrix
+#------------------------------------------------
+def test_S_matrix_shape_scalar(scalar_hamiltonian, expected_upper_pole):
+    """S should be d×d where d is the nullspace dimension."""
+    U0, V0 = compute_null_vectors(
+        scalar_hamiltonian, expected_upper_pole,
+        kx=0., ky=0., omega=OMEGA, eta=ETA, tol=ATOL_APPROX,
+    )
+    S = compute_S_matrix(scalar_hamiltonian, expected_upper_pole, 0., 0., U0, V0)
+    assert S.shape == (1, 1)
+
+def test_S_matrix_known_answer_scalar(scalar_hamiltonian, expected_upper_pole):
+    """S should have magnitude √3 for scalar toy model."""
+    U0, V0 = compute_null_vectors(
+        scalar_hamiltonian, expected_upper_pole,
+        kx=0., ky=0., omega=OMEGA, eta=ETA, tol=ATOL_APPROX,
+    )
+    S = compute_S_matrix(scalar_hamiltonian, expected_upper_pole, 0., 0., U0, V0)
+    assert np.isclose(np.abs(S[0, 0]), np.sqrt(3), atol=ATOL_APPROX)
+
+def test_S_matrix_invertible_scalar(scalar_hamiltonian, expected_upper_pole):
+    """S should be invertible at a simple first-order pole — det(S) ≠ 0."""
+    U0, V0 = compute_null_vectors(
+        scalar_hamiltonian, expected_upper_pole,
+        kx=0., ky=0., omega=OMEGA, eta=ETA, tol=ATOL_APPROX,
+    )
+    S = compute_S_matrix(scalar_hamiltonian, expected_upper_pole, 0., 0., U0, V0)
+    assert np.abs(np.linalg.det(S)) > ATOL_APPROX
+
+def test_S_matrix_shape_degenerate(degenerate_hamiltonian, expected_degenerate_pole):
+    """S should be 2×2 for a degenerate pole with 2D nullspace."""
+    U0, V0 = compute_null_vectors(
+        degenerate_hamiltonian, expected_degenerate_pole,
+        kx=0., ky=0., omega=OMEGA_DEGENERATE, eta=ETA, tol=ATOL_APPROX,
+    )
+    S = compute_S_matrix(degenerate_hamiltonian, expected_degenerate_pole, 0., 0., U0, V0)
+    assert S.shape == (2, 2)
+
+def test_S_matrix_invertible_degenerate(degenerate_hamiltonian, expected_degenerate_pole):
+    """S should be invertible for a degenerate first-order pole."""
+    U0, V0 = compute_null_vectors(
+        degenerate_hamiltonian, expected_degenerate_pole,
+        kx=0., ky=0., omega=OMEGA_DEGENERATE, eta=ETA, tol=ATOL_APPROX,
+    )
+    S = compute_S_matrix(degenerate_hamiltonian, expected_degenerate_pole, 0., 0., U0, V0)
+    assert np.abs(np.linalg.det(S)) > ATOL_APPROX
+
+# endregion
+
+#------------------------------------------------
+# region compute_residue_from_S
+#------------------------------------------------
+def test_residue_shape_scalar(scalar_hamiltonian, expected_upper_pole):
+    """Residue should be n×n."""
+    U0, V0 = compute_null_vectors(
+        scalar_hamiltonian, expected_upper_pole,
+        kx=0., ky=0., omega=OMEGA, eta=ETA, tol=ATOL_APPROX,
+    )
+    S = compute_S_matrix(scalar_hamiltonian, expected_upper_pole, 0., 0., U0, V0)
+    residue = compute_residue_from_S(U0, V0, S)
+    assert residue.shape == (1, 1)
+
+def test_residue_known_answer_scalar(scalar_hamiltonian, expected_upper_pole):
+    """Residue should match analytic result |Res| = 1/√3 for scalar toy model."""
+    U0, V0 = compute_null_vectors(
+        scalar_hamiltonian, expected_upper_pole,
+        kx=0., ky=0., omega=OMEGA, eta=ETA, tol=ATOL_APPROX,
+    )
+    S = compute_S_matrix(scalar_hamiltonian, expected_upper_pole, 0., 0., U0, V0)
+    residue = compute_residue_from_S(U0, V0, S)
+    assert np.isclose(np.abs(residue[0, 0]), 1./np.sqrt(3), atol=ATOL_APPROX)
+
+def test_residue_shape_degenerate(degenerate_hamiltonian, expected_degenerate_pole):
+    """Residue should be n×n for degenerate case."""
+    U0, V0 = compute_null_vectors(
+        degenerate_hamiltonian, expected_degenerate_pole,
+        kx=0., ky=0., omega=OMEGA_DEGENERATE, eta=ETA, tol=ATOL_APPROX,
+    )
+    S = compute_S_matrix(degenerate_hamiltonian, expected_degenerate_pole, 0., 0., U0, V0)
+    residue = compute_residue_from_S(U0, V0, S)
+    assert residue.shape == (2, 2)
+
+# endregion
+
+#------------------------------------------------
+# region compute_residues
+#------------------------------------------------
+def test_compute_residues_scalar(scalar_hamiltonian, expected_upper_pole):
+    """Should return one residue with correct magnitude."""
+    poles, orders = compute_poles(
+        scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA, tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX
+    )
+    residues = compute_residues(
+        scalar_hamiltonian, poles, orders,
+        kx=0., ky=0., omega=OMEGA, eta=ETA, tol=ATOL_APPROX,
+    )
+    assert len(residues) == 1
+    assert residues[0].shape == (1, 1)
+    assert np.isclose(np.abs(residues[0][0, 0]), 1./np.sqrt(3), atol=ATOL_APPROX)
+
+def test_compute_residues_degenerate(degenerate_hamiltonian):
+    """Should return one residue of shape (2,2) for degenerate case."""
+    poles, orders = compute_poles(
+        degenerate_hamiltonian, kx=0., ky=0., omega=OMEGA_DEGENERATE, eta=ETA, tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX
+    )
+    residues = compute_residues(
+        degenerate_hamiltonian, poles, orders,
+        kx=0., ky=0., omega=OMEGA_DEGENERATE, eta=ETA, tol=ATOL_APPROX,
+    )
+    assert len(residues) == 1
+    assert residues[0].shape == (2, 2)
 
 # endregion

@@ -51,6 +51,20 @@ kubo_bilayer/
 ```
 
 ---
+## Numerical Parameters
+
+kubo_bilayer does not provide default values for numerical tolerances
+such as pole filtering thresholds, clustering tolerances, and SVD
+thresholds. These must always be passed explicitly by the caller.
+
+Reasonable values depend heavily on the energy scale of the physical
+system — a tolerance appropriate for a toy model may be orders of
+magnitude too tight or too loose for a real material. Explicit
+tolerances make the numerical choices auditable and reproducible.
+
+A configuration file (config.yaml) for managing these parameters
+across a full calculation is planned for a future release.
+
 
 ## Installation
 

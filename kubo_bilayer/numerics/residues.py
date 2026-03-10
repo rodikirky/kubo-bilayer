@@ -50,7 +50,7 @@
 
             S = U0† · P'(kα) · V0
 
-        is computed, where P'(kα) = H1 + 2·kα·H2 is the derivative
+        is computed, where P'(kα) = -H1 - 2·kα·H2 is the derivative
         of the PEP matrix at kα, with H1 and H2 obtained from
         BulkHamiltonian.hamiltonian_kz_polynomial().
 
@@ -96,9 +96,21 @@
     correct (ω, eta) pair.
     - All SVD thresholds are controlled by tol, which should match
     the cluster tolerance used in cluster_poles().
+    - No default values are provided for numerical tolerances. All
+    thresholds must be passed explicitly by the caller, as reasonable
+    values depend on the energy scale of the physical system.
     - The genuine second-order pole case (Case 3) is implemented
     for completeness but is not expected at generic (kx, ky, ω)
-    grid points. See toy_second_order.py (TODO) for a test case.
+    grid points. Even thinking of a test case like
+    toy_double_pole.py (TODO) is difficult.
+
+    Note on second-order poles
+    --------------------------
+    Genuine second-order poles are not expected at generic (kx, ky, ω)
+    grid points and have not been observed in the systems studied here.
+    However, their existence for Hermitian Hamiltonians has not been
+    ruled out in general. The Jordan chain construction in residues.py
+    is included (TODO) to handle this case if encountered.
 
     Dependencies
     ------------
@@ -120,6 +132,8 @@ __all__ = [
     "ArrayC",
     "compute_null_vectors",
     "compute_S_matrix",
+    "compute_residue_from_S",
+    "compute_residues"
 ]
 
 def compute_null_vectors(
@@ -200,5 +214,110 @@ def compute_S_matrix(
     S : ArrayC, shape (d, d)
     """
     H0, H1, H2 = hamiltonian.hamiltonian_kz_polynomial(kx, ky)
-    M_prime = H1 + 2 * pole * H2
-    return U0.conj().T @ M_prime @ V0
+    P_prime = -H1 - 2 * pole * H2
+    return U0.conj().T @ P_prime @ V0
+
+def compute_residue_from_S(
+    U0: ArrayC,
+    V0: ArrayC,
+    S: ArrayC,
+) -> ArrayC:
+    """
+    Construct the residue matrix of the retarded bulk Green's function
+
+        Res(G̃^r; kα) = V0 · S⁻¹ · U0†
+
+    at a pole kα, from the null vectors and S matrix.
+
+    Handles two cases:
+
+    Case 1 — Simple first-order pole (nullspace dim = 1):
+        S is 1×1 and invertible. The residue is rank-1:
+            Res = V0 · S⁻¹ · U0†
+
+    Case 2 — Degenerate first-order pole (nullspace dim > 1):
+        S is d×d and invertible. The residue is a sum of
+        rank-1 terms:
+            Res = V0 · S⁻¹ · U0†
+        Note this is the same formula — the matrix dimensions
+        handle the summation automatically.
+
+    Parameters
+    ----------
+    U0 : ArrayC, shape (n, d)
+        Left null vectors from compute_null_vectors()
+    V0 : ArrayC, shape (n, d)
+        Right null vectors from compute_null_vectors()
+    S  : ArrayC, shape (d, d)
+        S matrix from compute_S_matrix()
+
+    Returns
+    -------
+    residue : ArrayC, shape (n, n)
+    """
+    S_inv = np.linalg.inv(S)
+    return V0 @ S_inv @ U0.conj().T
+
+def compute_residues(
+    hamiltonian: BulkHamiltonian,
+    poles: ArrayC,
+    candidate_orders: NDArray[np.intp],
+    kx: float,
+    ky: float,
+    omega: float,
+    eta: float,
+    tol: float,
+) -> list[ArrayC]:
+    """
+    Compute the residues of the retarded bulk Green's function
+
+        G̃^r(kz) = [(ω + i·eta)·I - H(kx, ky, kz)]⁻¹
+
+    at each pole in the upper half-plane.
+
+    This function chains the residue computation steps:
+        1. compute_null_vectors  — SVD of P(kα)
+        2. compute_S_matrix      — S = U0† · P'(kα) · V0
+        3. compute_residue_from_S — Res = V0 · S⁻¹ · U0†
+
+    For each pole, the candidate order from cluster_poles() is
+    checked against the nullspace dimension to confirm whether
+    the pole is simple, degenerate, or genuine second-order.
+    A RuntimeWarning is issued for any candidate higher-order
+    pole encountered.
+
+    Parameters
+    ----------
+    hamiltonian       : BulkHamiltonian
+    poles             : ArrayC, shape (k,)
+        Unique poles from compute_poles()
+    candidate_orders  : NDArray[np.intp], shape (k,)
+        Candidate orders from compute_poles()
+    kx, ky            : float, in-plane momenta
+    omega, eta        : float, must match values used in compute_poles()
+    tol               : float, SVD threshold for null vector detection
+
+    Returns
+    -------
+    residues : list[ArrayC], length k
+        Residue matrix for each unique pole, shape (n, n) each.
+    """
+    residues = []
+
+    for pole, order in zip(poles, candidate_orders):
+        U0, V0 = compute_null_vectors(
+            hamiltonian, pole, kx, ky, omega, eta, tol=tol
+        )
+        nullspace_dim = U0.shape[1]
+
+        if order > 1 and nullspace_dim == 1:
+            raise NotImplementedError(
+                f"Genuine second-order pole detected at kz ≈ {pole:.6f}. "
+                f"Jordan chain construction is not yet implemented. "
+                f"This is not expected at generic (kx, ky, omega) grid points."
+            )
+
+        S = compute_S_matrix(hamiltonian, pole, kx, ky, U0, V0)
+        residues.append(compute_residue_from_S(U0, V0, S))
+
+    return residues

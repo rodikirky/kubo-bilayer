@@ -32,6 +32,8 @@ def expected_degenerate_pole():
 #TODO: Transfer these to config.yaml once in existence:
 
 # Numerical tolerances
+# NOTE: These tolerances are calibrated for the toy models only.
+# Do not use these values as defaults in production calculations.
 ATOL_STRICT = 1e-10    # exact known-answer tests e.g. companion matrices
 ATOL_APPROX = 1e-5     # approximate tests e.g. pole locations with eta→0
 

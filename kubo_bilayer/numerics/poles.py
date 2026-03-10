@@ -57,8 +57,7 @@
     - The maximum pole order for a quadratic matrix polynomial of
     dimension n is 2.
     - Second-order poles occur only at exceptional points in (kx, ky, ω)
-    space and are not expected at generic grid points. A runtime warning
-    is issued when a candidate higher-order cluster is detected.
+    space and are not expected at generic grid points. 
     - The eigenvectors of the companion problem are not returned, as the
     residue computation in residues.py derives the nullspace vectors
     independently and more stably via SVD.
@@ -87,7 +86,7 @@ __all__ = [
 ]
 
 def build_companion_matrices(
-    Hamiltonian: BulkHamiltonian,
+    hamiltonian: BulkHamiltonian,
     kx: float,
     ky: float,
     omega: float,
@@ -124,9 +123,9 @@ def build_companion_matrices(
             raise ValueError(f"{name} must be real, got {val}.")
     if eta <= 0:
         raise ValueError(f"eta must be strictly positive, got {eta}.")
-    H0, H1, H2 = Hamiltonian.hamiltonian_kz_polynomial(kx,ky)
-    n = Hamiltonian.matrix_dim
-    I = Hamiltonian.identity
+    H0, H1, H2 = hamiltonian.hamiltonian_kz_polynomial(kx,ky)
+    n = hamiltonian.matrix_dim
+    I = hamiltonian.identity
     Z = np.zeros((n, n), dtype=np.complex128)
 
     R = np.array(H0 - (omega+1j*eta) * I, dtype=np.complex128)
@@ -162,7 +161,7 @@ def solve_companion_evp(
 
 def filter_upper_halfplane(
     kz_all: ArrayC,
-    tol: float = 1e-10,
+    tol: float,
 ) -> ArrayC:
     """
     Filter poles to keep only those in the upper half of the

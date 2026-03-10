@@ -76,6 +76,27 @@
                     = [[i/√3]]
                     ≈ [[0.5774i]]
 
+    Phase Convention Note
+    ---------------------
+    The null vectors U0 and V0 returned by the SVD of P(kα) are only
+    defined up to a global phase. As a result, the S matrix
+
+        S = U0† · P'(kα) · V0
+
+    inherits this phase ambiguity and its complex argument is a
+    convention artifact of the SVD implementation rather than a
+    physically meaningful quantity. Concretely, for the scalar toy
+    model the analytic value is S = -i√3, but numpy's SVD convention
+    yields real null vectors, rotating S to -√3.
+
+    The residue
+
+        Res = V0 · S⁻¹ · U0†
+
+    is phase invariant — the phases in U0 and V0 cancel through S⁻¹
+    — and is therefore independent of the SVD convention. Tests on
+    S should check |S| = √3 rather than the complex value directly.
+
     Usage
     -----
     The factory function make_scalar_hamiltonian() returns a

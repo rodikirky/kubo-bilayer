@@ -2,8 +2,6 @@ from typing import Tuple
 import numpy as np
 from numpy.typing import NDArray
 import pytest
-from showcases.toy_trivial import make_scalar_hamiltonian
-from showcases.toy_degenerate import make_degenerate_pole_hamiltonian
 from kubo_bilayer.numerics.poles import *
 from conftest import ATOL_APPROX, ATOL_STRICT, ETA, OMEGA, OMEGA_DEGENERATE
 
@@ -93,7 +91,7 @@ def test_filter_returns_upper_halfplane(scalar_hamiltonian):
     """Should return exactly one pole in the upper half-plane."""
     L, M = build_companion_matrices(scalar_hamiltonian, kx=0., ky=0., omega=0., eta=ETA)
     kz_all = solve_companion_evp(L, M)
-    poles = filter_upper_halfplane(kz_all)
+    poles = filter_upper_halfplane(kz_all, tol=ATOL_STRICT)
     assert len(poles) == 1
     assert np.imag(poles[0]) > 0
 
@@ -101,7 +99,7 @@ def test_filter_correct_pole_location(scalar_hamiltonian, expected_upper_pole):
     """Upper half-plane pole should match analytic result at eta→0."""
     L, M = build_companion_matrices(scalar_hamiltonian, kx=0., ky=0., omega=0., eta=ETA)
     kz_all = solve_companion_evp(L, M)
-    poles = filter_upper_halfplane(kz_all)
+    poles = filter_upper_halfplane(kz_all, tol=ATOL_STRICT)
     assert np.isclose(poles[0], expected_upper_pole, atol=ATOL_STRICT)
 
 # endregion
@@ -113,7 +111,7 @@ def test_cluster_no_clustering_scalar(scalar_hamiltonian):
     """Two well-separated poles should not be clustered."""
     L, M = build_companion_matrices(scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA)
     kz_all = solve_companion_evp(L, M)
-    poles = filter_upper_halfplane(kz_all)
+    poles = filter_upper_halfplane(kz_all, tol=ATOL_STRICT)
     unique_poles, orders = cluster_poles(poles, tol=ATOL_STRICT)
     assert len(unique_poles) == 1
     assert orders[0] == 1
@@ -122,7 +120,7 @@ def test_cluster_detects_degenerate_pole(degenerate_hamiltonian):
     """Two near-coincident poles should be clustered into one candidate order-2 pole."""
     L, M = build_companion_matrices(degenerate_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA)
     kz_all = solve_companion_evp(L, M)
-    poles = filter_upper_halfplane(kz_all)
+    poles = filter_upper_halfplane(kz_all, tol=ATOL_STRICT)
     unique_poles, orders = cluster_poles(poles, tol=ATOL_STRICT)
     assert len(unique_poles) == 1
     assert orders[0] == 2
@@ -131,7 +129,7 @@ def test_cluster_known_degenerate_pole_location(degenerate_hamiltonian, expected
     """Cluster centre should be close to the analytic double pole at kz = i."""
     L, M = build_companion_matrices(degenerate_hamiltonian, kx=0., ky=0., omega=OMEGA_DEGENERATE, eta=ETA)
     kz_all = solve_companion_evp(L, M)
-    poles = filter_upper_halfplane(kz_all)
+    poles = filter_upper_halfplane(kz_all, tol=ATOL_STRICT)
     unique_poles, orders = cluster_poles(poles, tol=ATOL_STRICT)
     assert np.isclose(unique_poles[0], expected_degenerate_pole, atol=ATOL_STRICT)
 # endregion
