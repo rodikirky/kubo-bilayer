@@ -19,8 +19,8 @@ Kubo-Streda formalism.
 ## Computational pipeline
 
 ```
-setup/          →     numerics/      →     analytics/     →     integrals/
-                                                                     ↓
+setup/          →     numerics/      →     greens/     →     integrals/
+                                                                 ↓
                                                                σ_A(z) profile
 ```
 

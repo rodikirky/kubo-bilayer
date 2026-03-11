@@ -124,7 +124,6 @@ __all__ = [
     "ArrayC",
     "boundary_derivative",
     "assemble_G00",
-    #"coincidence_derivative"
 ]
 
 
@@ -168,7 +167,7 @@ def assemble_G00(
     """
     Assemble the coincidence value of the interfacial Green's function:
 
-        G(0,0) = -[-h_int + L^r_R - L^r_L]^{-1}
+        G(0,0) = [-h_int + L^r_R - L^r_L]^{-1}
 
     Parameters
     ----------
@@ -184,4 +183,4 @@ def assemble_G00(
     G00 : ArrayC, shape (n, n)
     """
     G00 = -h_int + L_R - L_L
-    return -np.linalg.inv(G00)
+    return np.linalg.inv(G00)
