@@ -7,39 +7,6 @@ from kubo_bilayer.numerics.residues import compute_residues
 from kubo_bilayer.greens.bulk import *
 from conftest import ATOL_APPROX, ATOL_STRICT, ETA, OMEGA, OMEGA_DEGENERATE
 
-# -----------------------
-# Test evaluate()
-# -----------------------
-def test_evaluate_scalar(scalar_hamiltonian, expected_upper_pole):
-    """G^r(Δz) should decay exponentially for Δz > 0."""
-    poles, orders = compute_poles(
-        scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA,
-        tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX,halfplane='upper'
-    )
-    residues = compute_residues(
-        scalar_hamiltonian, poles, orders,
-        kx=0., ky=0., omega=OMEGA, eta=ETA, tol=ATOL_APPROX,
-    )
-    G1 = evaluate(1., poles, residues,halfplane='upper')
-    G2 = evaluate(2., poles, residues,halfplane='upper')
-    # G^r should decay — |G(2)| < |G(1)|
-    assert np.abs(G2[0,0]) < np.abs(G1[0,0])
-
-def test_evaluate_rejects_nonpositive_delta_z(scalar_hamiltonian):
-    """delta_z <= 0 should raise ValueError."""
-    poles, orders = compute_poles(
-        scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA,
-        tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX,halfplane='upper'
-    )
-    residues = compute_residues(
-        scalar_hamiltonian, poles, orders,
-        kx=0., ky=0., omega=OMEGA, eta=ETA, tol=ATOL_APPROX,
-    )
-    with pytest.raises(ValueError):
-        evaluate(0., poles, residues,halfplane='upper')
-    with pytest.raises(ValueError):
-        evaluate(-1., poles, residues,halfplane='upper')
-
 # -------------------------
 # Test coincidence_value()
 # -------------------------
@@ -70,6 +37,37 @@ def test_coincidence_value_consistent_with_evaluate(scalar_hamiltonian):
     G0_direct = coincidence_value(residues,halfplane='upper')
     G0_evaluate = evaluate(1e-10, poles, residues,halfplane='upper')
     assert np.allclose(G0_direct, G0_evaluate, atol=ATOL_APPROX)
+
+# -----------------------
+# Test evaluate()
+# -----------------------
+def test_evaluate_scalar(scalar_hamiltonian, expected_upper_pole):
+    """G^r(Δz) should decay exponentially for Δz > 0."""
+    poles, orders = compute_poles(
+        scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA,
+        tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX,halfplane='upper'
+    )
+    residues = compute_residues(
+        scalar_hamiltonian, poles, orders,
+        kx=0., ky=0., omega=OMEGA, eta=ETA, tol=ATOL_APPROX,
+    )
+    G1 = evaluate(1., poles, residues,halfplane='upper')
+    G2 = evaluate(2., poles, residues,halfplane='upper')
+    # G^r should decay — |G(2)| < |G(1)|
+    assert np.abs(G2[0,0]) < np.abs(G1[0,0])
+
+def test_evaluate_rejects_nonpositive_delta_z(scalar_hamiltonian):
+    """delta_z <= 0 should raise ValueError."""
+    poles, orders = compute_poles(
+        scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA,
+        tol_filter=ATOL_STRICT, tol_cluster=ATOL_APPROX,halfplane='upper'
+    )
+    residues = compute_residues(
+        scalar_hamiltonian, poles, orders,
+        kx=0., ky=0., omega=OMEGA, eta=ETA, tol=ATOL_APPROX,
+    )
+    with pytest.raises(ValueError):
+        evaluate(-1., poles, residues,halfplane='upper')
 
 # -------------------------
 # Test coincidence_derivative()

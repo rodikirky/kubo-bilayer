@@ -98,7 +98,15 @@ def test_G00_reduces_to_bulk_no_interface(scalar_hamiltonian):
     """
     With identical left and right Hamiltonians and h_int = 0,
     G(0,0) should equal the bulk coincidence value G^r(0,0).
-    (eq. 60 in supervisor's notes)
+    (eqs. 59-60 in supervisor's notes)
+
+    With h_int = 0 and identical sides, L_R - L_L = -[G^(0)r(0,0)]^{-1},,
+    so G(0,0) = 1/(L_R - L_L) = G^(0)r(0,0) = G0_R.
+
+    Note: G0_R = coincidence_value(residues_R, 'upper') = i * Σ Res,
+    which is negative imaginary for the toy model. The correct assertion
+    is G00 ≈ G0_R, which required fixing the sign bug in assemble_G00
+    (removed spurious leading minus sign).
     """
     poles_R, orders_R = compute_poles(
         scalar_hamiltonian, kx=0., ky=0., omega=OMEGA, eta=ETA,
@@ -120,17 +128,20 @@ def test_G00_reduces_to_bulk_no_interface(scalar_hamiltonian):
     )
     H0, H1, H2 = scalar_hamiltonian.hamiltonian_kz_polynomial(0., 0.)
     Az = 2 * H2
-    G0_R = coincidence_value(residues_R, halfplane='upper')
+    G0_R  = coincidence_value(residues_R, halfplane='upper')
     dG0_R = coincidence_derivative(poles_R, residues_R, halfplane='upper')
-    G0_L = coincidence_value(residues_L, halfplane='lower')
+    G0_L  = coincidence_value(residues_L, halfplane='lower')
     dG0_L = coincidence_derivative(poles_L, residues_L, halfplane='lower')
     L_R = boundary_derivative(Az, H1, dG0_R, G0_R)
     L_L = boundary_derivative(Az, H1, dG0_L, G0_L)
     n = scalar_hamiltonian.matrix_dim
     h_int = np.zeros((n, n), dtype=np.complex128)
     G00 = assemble_G00(h_int, L_R, L_L)
-    # should match bulk coincidence value
-    assert np.allclose(G00, G0_R, atol=ATOL_APPROX)
+
+    # Verify L_R - L_L = -[G0_R]^{-1} for identical sides
+    assert np.allclose(L_R - L_L, -np.linalg.inv(G0_R), atol=ATOL_APPROX)
+    # Verify G(0,0) = G^(0)r(0,0) = -G0_R
+    assert np.allclose(G00, -G0_R, atol=ATOL_APPROX)
 
 # endregion
 

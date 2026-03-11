@@ -85,50 +85,6 @@ __all__ = [
     "coincidence_derivative"
 ]
 
-def evaluate(
-    delta_z: float,
-    poles: ArrayC,
-    residues: list[ArrayC],
-    halfplane: str,    # 'upper' or 'lower'
-) -> ArrayC:
-    """
-    Evaluate the bulk retarded Green's function at a given Δz > 0:
-
-        G^r(Δz) = i · Σ_α e^(i·kα·Δz) · Res_α
-
-    Parameters
-    ----------
-    delta_z  : float, must not be zero
-    poles    : ArrayC, shape (k,)
-        Poles in the upper half-plane from compute_poles().
-    residues : list[ArrayC], length k
-        Residue matrices from compute_residues(), each shape (n, n).
-    halfplane : str
-        Which half-plane the contour closes in.
-        Must be 'upper' (right bulk Green's function, Δz > 0)
-        or 'lower' (left bulk Green's function, Δz < 0).
-
-    Returns
-    -------
-    G : ArrayC, shape (n, n)
-        Bulk retarded Green's function at Δz.
-    """
-    if halfplane not in ('upper', 'lower'):
-        raise ValueError(
-            f"halfplane must be 'upper' or 'lower', got '{halfplane}'."
-        )
-    sign = 1j if halfplane == 'upper' else -1j
-    if delta_z==0:
-        raise ValueError("delta_z must not be zero. Coincidence value is computed separately.")
-    if halfplane == 'upper' and delta_z <= 0:
-        raise ValueError(f"halfplane must be 'lower' for delta_z<=0. Got {halfplane}.")
-    if halfplane == 'lower' and delta_z >= 0:
-        raise ValueError(f"halfplane must be 'upper' for delta_z>=0. Got {halfplane}.")
-    return sign * sum(
-        np.exp(1j * pole * delta_z) * residue
-        for pole, residue in zip(poles, residues)
-    )
-
 def coincidence_value(
     residues: list[ArrayC],
     halfplane: str,    # 'upper' or 'lower'
@@ -166,6 +122,51 @@ def coincidence_value(
         )
     sign = 1j if halfplane == 'upper' else -1j
     return sign * sum(residues)
+
+def evaluate(
+    delta_z: float,
+    poles: ArrayC,
+    residues: list[ArrayC],
+    halfplane: str,    # 'upper' or 'lower'
+) -> ArrayC:
+    """
+    Evaluate the bulk retarded Green's function at a given Δz > 0:
+
+        G^r(Δz) = i · Σ_α e^(i·kα·Δz) · Res_α
+
+    Parameters
+    ----------
+    delta_z  : float
+    poles    : ArrayC, shape (k,)
+        Poles in the upper half-plane from compute_poles().
+    residues : list[ArrayC], length k
+        Residue matrices from compute_residues(), each shape (n, n).
+    halfplane : str
+        Which half-plane the contour closes in.
+        Must be 'upper' (right bulk Green's function, Δz > 0)
+        or 'lower' (left bulk Green's function, Δz < 0).
+
+    Returns
+    -------
+    G : ArrayC, shape (n, n)
+        Bulk retarded Green's function at Δz.
+    """
+    if delta_z==0:
+        return coincidence_value(residues, halfplane)
+
+    if halfplane not in ('upper', 'lower'):
+        raise ValueError(
+            f"halfplane must be 'upper' or 'lower', got '{halfplane}'."
+        )
+    sign = 1j if halfplane == 'upper' else -1j
+    if halfplane == 'upper' and delta_z <= 0:
+        raise ValueError(f"halfplane must be 'lower' for delta_z<=0. Got {halfplane}.")
+    if halfplane == 'lower' and delta_z >= 0:
+        raise ValueError(f"halfplane must be 'upper' for delta_z>=0. Got {halfplane}.")
+    return sign * sum(
+        np.exp(1j * pole * delta_z) * residue
+        for pole, residue in zip(poles, residues)
+    )
 
 def coincidence_derivative(
     poles: ArrayC,

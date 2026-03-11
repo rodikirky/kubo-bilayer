@@ -84,13 +84,17 @@ import numpy as np
 from numpy.typing import NDArray
 
 from kubo_bilayer.greens.bulk import *
+from kubo_bilayer.greens.halfspace import compute_G_bar_R, compute_G_bar_L
 
 ArrayC = NDArray[np.complex128]
 
 __all__ = [
     "ArrayC",
     "compute_F_R",
+    "compute_F_L",
+    "compute_F_bar_R",
     "compute_F_bar_L",
+    "_compute_G_halfspace",
     "compute_G_bilayer"
 ]
 
@@ -120,6 +124,38 @@ def compute_F_R(
     G_0 = coincidence_value(residues_R, halfplane='upper')
     return -G_z @ np.linalg.inv(G_0)
 
+def compute_F_L(
+    z: float,
+    poles_L: ArrayC,
+    residues_L: list[ArrayC],
+) -> ArrayC:
+    """
+    Left propagation factor F^r_L(z) for z < 0:
+
+        F^r_L(z) = -G^(0)r_L(z,0) · [G^(0)r_L(0,0)]^{-1}
+    """
+    if z >= 0:
+        raise ValueError(f"z must be strictly negative, got {z}.")
+    G_z = evaluate(z, poles_L, residues_L, halfplane='lower')
+    G_0 = coincidence_value(residues_L, halfplane='lower')
+    return -G_z @ np.linalg.inv(G_0)
+
+def compute_F_bar_R(
+    z_prime: float,
+    poles_R: ArrayC,
+    residues_R: list[ArrayC],
+) -> ArrayC:
+    """
+    Right propagation factor F̄^r_R(z') for z' > 0:
+
+        F̄^r_R(z') = -[G^(0)r_R(0,0)]^{-1} · G^(0)r_R(0,z')
+                  = -[G^(0)r_R(0,0)]^{-1} · [G^(0)r_R(z',0)]†
+    """
+    if z_prime <= 0:
+        raise ValueError(f"z_prime must be strictly positive, got {z_prime}.")
+    G_zprime = evaluate(z_prime, poles_R, residues_R, halfplane='upper').conj().T
+    G_0      = coincidence_value(residues_R, halfplane='upper')
+    return -np.linalg.inv(G_0) @ G_zprime
 
 def compute_F_bar_L(
     z_prime: float,
@@ -151,6 +187,28 @@ def compute_F_bar_L(
     G_0 = coincidence_value(residues_L, halfplane='lower')
     return -np.linalg.inv(G_0) @ G_zprime
 
+def _compute_G_halfspace(
+    z: float,
+    z_prime: float,
+    poles_R: ArrayC,
+    residues_R: list[ArrayC],
+    poles_L: ArrayC,
+    residues_L: list[ArrayC],
+) -> ArrayC:
+    """
+    Route to the correct half-space GF based on the signs of z and z'.
+    Returns zero matrix for cross-interface inputs (opposite signs).
+    """
+    if z > 0 and z_prime > 0:
+        return compute_G_bar_R(z, z_prime, poles_R, residues_R,
+                                poles_L, residues_L)
+    elif z < 0 and z_prime < 0:
+        return compute_G_bar_L(z, z_prime, poles_R, residues_R,
+                                poles_L, residues_L)
+    else:
+        n = residues_R[0].shape[0]
+        return np.zeros((n, n), dtype=np.complex128)
+
 
 def compute_G_bilayer(
     z: float,
@@ -162,36 +220,65 @@ def compute_G_bilayer(
     G00: ArrayC,
 ) -> ArrayC:
     """
-    Assemble the full cross-interface retarded Green's function
-    for z > 0, z' < 0:
+    Assemble the full retarded Green's function G^r(z, z') for
+    arbitrary z, z' != 0.
 
-        G^r(z,z') = F^r_R(z) · G(0,0) · F̄^r_L(z')
+    Four cases, following eq. (46) of the supervisor's notes:
+
+        G^r(z,z') = Ḡ^r_L(z,z') + Ḡ^r_R(z,z') + F^r(z)·G(0,0)·F̄^r(z')
+
+    Case 1 — z > 0, z' < 0  (cross-interface, original):
+        Ḡ^r_L = Ḡ^r_R = 0
+        G = F^r_R(z) · G00 · F̄^r_L(z')
+
+    Case 2 — z < 0, z' > 0  (mirror cross-interface):
+        Ḡ^r_L = Ḡ^r_R = 0
+        G = [G^r(z', z)]†
+
+    Case 3 — z > 0, z' > 0  (both right):
+        Ḡ^r_L = 0
+        G = Ḡ^r_R(z,z') + F^r_R(z) · G00 · F̄^r_R(z')
+
+    Case 4 — z < 0, z' < 0  (both left):
+        Ḡ^r_R = 0
+        G = Ḡ^r_L(z,z') + F^r_L(z) · G00 · F̄^r_L(z')
 
     Parameters
     ----------
-    z          : float, must be strictly positive
-    z_prime    : float, must be strictly negative
-    poles_R    : ArrayC, shape (k,)
-        Upper half-plane poles
+    z          : float, must not be zero
+    z_prime    : float, must not be zero
+    poles_R    : ArrayC, shape (k,)  — upper half-plane poles
     residues_R : list[ArrayC], length k
-    poles_L    : ArrayC, shape (k,)
-        Lower half-plane poles
+    poles_L    : ArrayC, shape (k,)  — lower half-plane poles
     residues_L : list[ArrayC], length k
-    G00        : ArrayC, shape (n, n)
-        Coincidence value from assemble_G00()
+    G00        : ArrayC, shape (n, n) — from assemble_G00()
 
     Returns
     -------
     G : ArrayC, shape (n, n)
     """
-    if z <= 0:
-        raise ValueError(
-            f"z must be strictly positive, got {z}."
-        )
-    if z_prime >= 0:
-        raise ValueError(
-            f"z_prime must be strictly negative, got {z_prime}."
-        )
-    F_R = compute_F_R(z, poles_R, residues_R)
-    F_bar_L = compute_F_bar_L(z_prime, poles_L, residues_L)
-    return F_R @ G00 @ F_bar_L
+    if z == 0.0 and z_prime == 0.0:
+        return G00
+    # TODO: handle z=0, z'!=0 and z!=0, z'=0 cases
+    if z == 0.0:
+        raise ValueError("z must not be zero.")
+    if z_prime == 0.0:
+        raise ValueError("z_prime must not be zero.")
+
+    G_halfspace = _compute_G_halfspace(
+        z, z_prime, poles_R, residues_R, poles_L, residues_L)
+
+    if z > 0 and z_prime < 0:
+        F      = compute_F_R(z, poles_R, residues_R)
+        F_bar  = compute_F_bar_L(z_prime, poles_L, residues_L)
+    elif z < 0 and z_prime > 0:
+        F      = compute_F_L(z, poles_L, residues_L)
+        F_bar  = compute_F_bar_R(z_prime, poles_R, residues_R)
+    elif z > 0 and z_prime > 0:
+        F      = compute_F_R(z, poles_R, residues_R)
+        F_bar  = compute_F_bar_R(z_prime, poles_R, residues_R)
+    else:
+        F      = compute_F_L(z, poles_L, residues_L)
+        F_bar  = compute_F_bar_L(z_prime, poles_L, residues_L)
+
+    return G_halfspace + F @ G00 @ F_bar
