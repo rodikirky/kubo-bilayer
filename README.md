@@ -1,3 +1,5 @@
+> 🚧 **Status:** Under active development — APIs and file layout may change.
+> 
 # kubo_bilayer
 
 A Python package for computing spatially resolved linear response coefficients
