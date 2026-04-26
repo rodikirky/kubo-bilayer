@@ -33,7 +33,7 @@ using the Streda decomposition of the Kubo formula.
 
 ---
 
-## Package Structure
+## Project Structure
 
 ```
 kubo_bilayer/
